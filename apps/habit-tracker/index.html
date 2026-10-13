@@ -1,0 +1,257 @@
+<title>하루 습관 체크</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+  /* Layout: 한 줄짜리 폰 앱. 위에 오늘 진행률, 아래로 습관 카드 목록, 맨 아래 추가 입력 */
+  :root {
+    --bg: #eef2ee;
+    --surface: #ffffff;
+    --ink: #1d2a24;
+    --muted: #5f6f67;
+    --line: #d6dfd9;
+    --accent: #2f7d5b;
+    --accent-soft: #d5ebdf;
+    --warn: #b4472f;
+    --display: "Do Hyeon", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121a16; --surface: #1b2520; --ink: #e5eee9; --muted: #9aaba2;
+      --line: #2c3a33; --accent: #5cc193; --accent-soft: #23402f; --warn: #ec8a73;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121a16; --surface: #1b2520; --ink: #e5eee9; --muted: #9aaba2;
+    --line: #2c3a33; --accent: #5cc193; --accent-soft: #23402f; --warn: #ec8a73;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 520px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 20px; }
+
+  header { display: grid; gap: 4px; }
+  .date { color: var(--muted); font-size: 13px; letter-spacing: .02em; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1.1; margin: 0; text-wrap: balance; }
+
+  .progress { display: flex; align-items: center; gap: 14px; }
+  .ring { width: 64px; height: 64px; flex: none; }
+  .ring circle { fill: none; stroke-width: 7; }
+  .ring .track { stroke: var(--line); }
+  .ring .bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .4s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .ring text { fill: var(--ink); font-family: var(--display); font-size: 18px; }
+  .progress p { margin: 0; color: var(--muted); }
+  .progress strong { color: var(--ink); font-weight: 600; }
+
+  .list { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+  .habit { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+  .habit.done { border-color: var(--accent); }
+  .check { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line); background: transparent; color: var(--surface); cursor: pointer; display: grid; place-items: center; font-size: 20px; transition: background .15s, border-color .15s; }
+  .habit.done .check { background: var(--accent); border-color: var(--accent); }
+  .check:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+  .info { min-width: 0; display: grid; gap: 6px; }
+  .name { font-weight: 600; overflow-wrap: anywhere; }
+  .week { display: flex; gap: 4px; align-items: center; }
+  .day { width: 18px; height: 18px; border-radius: 5px; background: var(--line); display: grid; place-items: center; font-size: 10px; color: var(--muted); }
+  .day.on { background: var(--accent); color: var(--surface); }
+  .streak { font-size: 12px; color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+  .streak b { color: var(--accent); font-weight: 600; }
+  .del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 6px; border-radius: 8px; }
+  .del.armed { color: var(--warn); font-weight: 600; }
+
+  form { display: flex; gap: 8px; }
+  form input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  form button { font: inherit; font-weight: 600; padding: 0 18px; border-radius: 12px; border: none; background: var(--accent); color: var(--surface); cursor: pointer; }
+
+  .note { font-size: 12px; color: var(--muted); margin: 0; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="date" id="today"></span>
+    <h1>오늘의 습관</h1>
+  </header>
+
+  <section class="progress" aria-live="polite">
+    <svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+      <circle class="track" cx="32" cy="32" r="27"></circle>
+      <circle class="bar" id="bar" cx="32" cy="32" r="27"></circle>
+      <text id="pct" x="32" y="38" text-anchor="middle">0%</text>
+    </svg>
+    <p id="summary"></p>
+  </section>
+
+  <ul class="list" id="list"></ul>
+
+  <form id="add">
+    <input id="newHabit" type="text" maxlength="30" placeholder="새 습관 (예: 스트레칭 5분)" aria-label="새 습관 이름" autocomplete="off">
+    <button type="submit">추가</button>
+  </form>
+
+  <p class="note" id="saveNote">기록은 이 브라우저에 저장돼요.</p>
+</div>
+
+<script>
+const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+const STARTER = [
+  { id: "h1", name: "물 8잔 마시기" },
+  { id: "h2", name: "30분 걷기" },
+  { id: "h3", name: "책 10쪽 읽기" },
+  { id: "h4", name: "자정 전에 자기" },
+];
+const LS_KEY = "habit-tracker-v1";
+
+let state = { habits: STARTER.slice(), checks: {} }; // checks: { "2026-10-13": ["h1", ...] }
+let saveRemote = null;
+let armedDelete = null;
+
+const keyOf = d => {
+  const z = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+};
+const daysBack = n => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d; };
+const isDone = (id, key) => (state.checks[key] || []).includes(id);
+
+function streakOf(id) {
+  let n = 0;
+  // 오늘 아직 안 했어도 어제까지 이어진 연속 기록은 보여줌
+  let i = isDone(id, keyOf(daysBack(0))) ? 0 : 1;
+  while (isDone(id, keyOf(daysBack(i)))) { n++; i++; }
+  return n;
+}
+
+function render() {
+  const now = new Date();
+  document.getElementById("today").textContent =
+    `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${DAY_LABELS[now.getDay()]}요일`;
+
+  const today = keyOf(now);
+  const total = state.habits.length;
+  const done = state.habits.filter(h => isDone(h.id, today)).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const C = 2 * Math.PI * 27;
+  const bar = document.getElementById("bar");
+  bar.style.strokeDasharray = C;
+  bar.style.strokeDashoffset = C * (1 - pct / 100);
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("summary").innerHTML = total === 0
+    ? "아래에서 첫 습관을 추가해 보세요."
+    : done === total
+      ? `<strong>오늘 ${total}개 모두 완료!</strong><br>내일도 이어가 봐요.`
+      : `<strong>${total}개 중 ${done}개</strong> 완료<br>${total - done}개 남았어요.`;
+
+  const list = document.getElementById("list");
+  list.replaceChildren();
+  if (total === 0) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "아직 습관이 없어요.";
+    list.append(li);
+  }
+  for (const h of state.habits) {
+    const on = isDone(h.id, today);
+    const li = document.createElement("li");
+    li.className = "habit" + (on ? " done" : "");
+
+    const btn = document.createElement("button");
+    btn.className = "check";
+    btn.textContent = on ? "✓" : "";
+    btn.setAttribute("aria-pressed", on);
+    btn.setAttribute("aria-label", `${h.name} ${on ? "완료 취소" : "완료"}`);
+    btn.onclick = () => toggle(h.id);
+
+    const info = document.createElement("div");
+    info.className = "info";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = h.name;
+    const week = document.createElement("div");
+    week.className = "week";
+    for (let i = 6; i >= 0; i--) {
+      const d = daysBack(i);
+      const cell = document.createElement("span");
+      cell.className = "day" + (isDone(h.id, keyOf(d)) ? " on" : "");
+      cell.textContent = DAY_LABELS[d.getDay()];
+      cell.title = keyOf(d);
+      week.append(cell);
+    }
+    const s = streakOf(h.id);
+    const st = document.createElement("span");
+    st.className = "streak";
+    st.innerHTML = s > 0 ? `<b>${s}일</b> 연속` : "";
+    week.append(st);
+    info.append(name, week);
+
+    const del = document.createElement("button");
+    del.className = "del" + (armedDelete === h.id ? " armed" : "");
+    del.textContent = armedDelete === h.id ? "삭제 확인" : "삭제";
+    del.onclick = () => {
+      if (armedDelete === h.id) {
+        state.habits = state.habits.filter(x => x.id !== h.id);
+        armedDelete = null;
+        save();
+      } else {
+        armedDelete = h.id;
+      }
+      render();
+    };
+
+    li.append(btn, info, del);
+    list.append(li);
+  }
+}
+
+function toggle(id) {
+  const k = keyOf(new Date());
+  const arr = state.checks[k] || [];
+  state.checks[k] = arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id];
+  armedDelete = null;
+  save();
+  render();
+}
+
+document.getElementById("add").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("newHabit");
+  const name = input.value.trim();
+  if (!name) return;
+  state.habits.push({ id: "h" + Date.now().toString(36), name });
+  input.value = "";
+  save();
+  render();
+});
+
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  if (saveRemote) saveRemote(state).catch(() => {});
+}
+
+// 1) 브라우저에 저장된 기록 불러오기
+try {
+  const saved = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+  if (saved && Array.isArray(saved.habits)) state = saved;
+} catch {}
+render();
+
+// 2) claude.ai에서 열었으면 계정에 저장 (다른 기기에서도 이어짐)
+(async () => {
+  try {
+    const [db, user] = await Promise.all([window.claude?.use("db"), window.claude?.use("user")]);
+    if (!db || !user) return;
+    const uid = await user.id();
+    if (!uid) return;
+    const ref = db.doc("data/users/" + uid + "/tracker");
+    const snap = await ref.get();
+    if (snap.exists) {
+      const d = snap.data();
+      state = { habits: [...(d.habits || [])], checks: JSON.parse(JSON.stringify(d.checks || {})) };
+      render();
+    }
+    saveRemote = s => ref.set({ habits: s.habits, checks: s.checks });
+    if (!snap.exists) save();
+    document.getElementById("saveNote").textContent = "기록은 내 계정에 저장돼요. 휴대폰에서 열어도 이어서 볼 수 있어요.";
+  } catch {}
+})();
+</script>
