@@ -1,0 +1,1270 @@
+<title>거실 무드 스튜디오</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 작업대(사진·뷰어)가 위, 제안 카드가 아래. 넓은 화면에선 뷰어 옆에 옵션 패널. */
+:root {
+  --bg: #f4f4f1;
+  --surface: #ffffff;
+  --sunk: #ebebe6;
+  --ink: #1d1f1c;
+  --muted: #676a62;
+  --line: #dcdcd4;
+  --accent: #2f5d50;      /* 솔잎색: 주요 동작 */
+  --accent-ink: #ffffff;
+  --add: #b9772f;         /* 원목색: 더하기 */
+  --remove: #b5473b;      /* 빼기 */
+  --move: #4a6d9a;        /* 옮기기 */
+  --shadow: 0 1px 2px rgba(20,24,20,.06), 0 6px 20px rgba(20,24,20,.06);
+  --f-display: "Gowun Batang", "Nanum Myeongjo", "AppleMyungjo", serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161816; --surface: #1f221f; --sunk: #2a2d29; --ink: #ecebe5; --muted: #a2a59b;
+    --line: #353932; --accent: #7fb3a2; --accent-ink: #0f1a16; --add: #dca463; --remove: #e07f72; --move: #8fb0db;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161816; --surface: #1f221f; --sunk: #2a2d29; --ink: #ecebe5; --muted: #a2a59b;
+  --line: #353932; --accent: #7fb3a2; --accent-ink: #0f1a16; --add: #dca463; --remove: #e07f72; --move: #8fb0db;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-family: var(--f-display); font-size: 26px; letter-spacing: -.01em; }
+h2 { font-family: var(--f-display); font-size: 20px; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; margin-bottom: 18px; }
+.tabs { display: flex; gap: 4px; background: var(--sunk); padding: 4px; border-radius: 10px; }
+.tabs button { border: 0; background: transparent; color: var(--muted); font: 500 14px var(--f-body); padding: 8px 14px; border-radius: 7px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+button, .btn { font-family: var(--f-body); }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0,1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.field { display: grid; gap: 6px; }
+.field > label, .field > .lbl { font-size: 13px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; font-family: var(--f-body); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+select, input[type="text"], input[type="number"] { font: 14px var(--f-body); padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); width: 100%; }
+
+.thumbs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.thumb { position: relative; flex: 0 0 auto; width: 76px; height: 76px; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer; padding: 0; background: var(--sunk); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb[aria-current="true"] { border-color: var(--accent); }
+.thumb .x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; line-height: 20px; cursor: pointer; padding: 0; }
+.thumb.add { display: grid; place-items: center; border: 1.5px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; line-height: 1.3; }
+.dropzone.drag { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 10px; }
+
+.viewer { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.viewer-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.tg { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; user-select: none; background: var(--surface); color: var(--ink); font-family: var(--f-body); }
+.tg .dot { width: 8px; height: 8px; border-radius: 50%; }
+.tg[aria-pressed="false"] { opacity: .45; }
+.stage { position: relative; background: #0d0e0d; touch-action: pan-y; }
+.stage canvas { display: block; width: 100%; height: auto; }
+.stage .after-clip { position: absolute; inset: 0; overflow: hidden; }
+.stage .after-clip canvas { position: absolute; top: 0; left: 0; }
+.handle { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); cursor: ew-resize; }
+.handle::after { content: "⟷"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #222; display: grid; place-items: center; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.stage .tag { position: absolute; top: 10px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; pointer-events: none; }
+.stage .tag.l { left: 10px; } .stage .tag.r { right: 10px; }
+.viewer-foot { padding: 10px 12px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; border-top: 1px solid var(--line); font-size: 13px; }
+
+.status { font-size: 13px; padding: 10px 12px; border-radius: 8px; background: var(--sunk); }
+.status.err { background: color-mix(in srgb, var(--remove) 14%, var(--surface)); }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+.summary { margin-top: 22px; display: grid; gap: 10px; }
+.summary .headline { font-family: var(--f-display); font-size: 22px; line-height: 1.4; max-width: 46ch; }
+.summary .diag { max-width: 68ch; color: var(--muted); }
+.kv { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.kv b { font-weight: 600; }
+.palette { display: flex; gap: 4px; align-items: center; }
+.sw { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(0,0,0,.12); }
+
+.cols { margin-top: 20px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0,1fr); } }
+.col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.col-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 2px solid var(--c); }
+.col-h h2 { color: var(--c); font-size: 18px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px 12px 14px; display: grid; gap: 4px; cursor: pointer; text-align: left; color: var(--ink); font: inherit; width: 100%; }
+.card:hover, .card.hot { border-color: var(--c); box-shadow: 0 0 0 1px var(--c); }
+.card .t { display: flex; gap: 8px; align-items: baseline; font-weight: 600; }
+.card .n { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: var(--c); color: #fff; font: 600 11px/20px var(--f-mono); text-align: center; }
+.card .r { font-size: 13.5px; color: var(--muted); }
+.card .meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; margin-top: 2px; }
+.card .meta a { color: var(--accent); }
+.card .price { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.lower { margin-top: 24px; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 16px; }
+@media (max-width: 900px) { .lower { grid-template-columns: minmax(0,1fr); } }
+.plan-wrap { overflow-x: auto; }
+.plan svg { width: 100%; height: auto; display: block; max-width: 520px; margin: 0 auto; }
+.plan text { font-family: var(--f-body); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.light-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.prompt-box { font-family: var(--f-mono); font-size: 12.5px; background: var(--sunk); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow: auto; }
+.budget { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.budget .big { font-family: var(--f-mono); font-size: 22px; font-weight: 500; }
+
+/* 소품 미리보기 */
+.try-grid { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .try-grid { grid-template-columns: minmax(0,1fr); } }
+#tryStage { position: relative; background: #0d0e0d; touch-action: none; cursor: grab; }
+#tryStage canvas { display: block; width: 100%; height: auto; }
+#tryStage.dragging { cursor: grabbing; }
+.range { display: grid; grid-template-columns: 64px minmax(0,1fr) 44px; align-items: center; gap: 8px; font-size: 13px; }
+.range input { width: 100%; accent-color: var(--accent); }
+.range output { font-family: var(--f-mono); font-size: 12px; text-align: right; color: var(--muted); }
+.product-prev { display: flex; gap: 10px; align-items: center; }
+.product-prev canvas { width: 72px; height: 72px; border-radius: 8px; background: repeating-conic-gradient(var(--sunk) 0 25%, var(--surface) 0 50%) 0 0/12px 12px; border: 1px solid var(--line); }
+.score { display: flex; align-items: center; gap: 14px; }
+.score .ring { --p: 0; width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--sunk) 0); display: grid; place-items: center; flex: 0 0 auto; }
+.score .ring span { width: 50px; height: 50px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font: 600 18px var(--f-mono); }
+.eval-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.eval h3 { margin-top: 6px; }
+.note { font-size: 12.5px; color: var(--muted); }
+.sample-flag { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">시공 없이 바꾸는 우리 집 분위기</div>
+      <h1>거실 무드 스튜디오</h1>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-plan" aria-selected="true" aria-controls="view-plan">분위기 제안</button>
+      <button role="tab" id="tab-try" aria-selected="false" aria-controls="view-try">소품 미리보기</button>
+    </div>
+  </header>
+
+  <!-- ───────────── 분위기 제안 ───────────── -->
+  <section id="view-plan" role="tabpanel" aria-labelledby="tab-plan">
+    <div class="grid">
+      <div class="viewer">
+        <div class="viewer-bar">
+          <div class="toggles" id="toggles">
+            <button class="tg" data-k="remove" aria-pressed="true"><span class="dot" style="background:var(--remove)"></span>빼기</button>
+            <button class="tg" data-k="add" aria-pressed="true"><span class="dot" style="background:var(--add)"></span>더하기</button>
+            <button class="tg" data-k="light" aria-pressed="true"><span class="dot" style="background:#e9b46a"></span>조명</button>
+            <button class="tg" data-k="labels" aria-pressed="true"><span class="dot" style="background:var(--ink)"></span>번호</button>
+          </div>
+          <span class="note" id="viewerNote">가운데 선을 끌어서 전후 비교</span>
+        </div>
+        <div class="stage" id="stage">
+          <canvas id="cvBefore" aria-label="원본 사진"></canvas>
+          <div class="after-clip" id="afterClip"><canvas id="cvAfter" aria-label="제안 반영 미리보기"></canvas></div>
+          <div class="handle" id="handle" role="slider" tabindex="0" aria-label="전후 비교 위치" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
+          <span class="tag l">지금</span><span class="tag r">제안 후</span>
+        </div>
+        <div class="viewer-foot">
+          <span class="muted">사진 위 그림은 실제 상품이 아니라 위치와 색감을 보여주는 간이 합성이에요.</span>
+          <button class="btn small" id="saveAfter" hidden>미리보기 저장</button>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="사진과 옵션">
+        <div class="field dropzone" id="dropzone">
+          <span class="lbl">거실 사진 <span class="muted" style="font-weight:400">· 여러 각도일수록 정확해요</span></span>
+          <div class="thumbs" id="thumbs"></div>
+          <input type="file" id="fileIn" accept="image/*" multiple hidden>
+        </div>
+        <div class="field">
+          <span class="lbl">원하는 분위기</span>
+          <div class="chips" id="styleChips"></div>
+        </div>
+        <div class="field">
+          <label for="budget">예산</label>
+          <select id="budget">
+            <option value="10">10만원 이하</option>
+            <option value="30">30만원 이하</option>
+            <option value="50">50만원 이하</option>
+            <option value="100">100만원 이하</option>
+            <option value="200">200만원 이하</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="lbl">우리 집 조건</span>
+          <div class="chips" id="condChips"></div>
+        </div>
+        <div class="field">
+          <label for="memo">더 알려줄 것 <span class="muted" style="font-weight:400">(선택)</span></label>
+          <input type="text" id="memo" placeholder="예: 소파는 바꾸기 싫어요, 아이 장난감 수납 필요">
+        </div>
+        <button class="btn primary" id="analyzeBtn">사진 분석하고 제안 받기</button>
+        <div id="analyzeStatus" class="status" hidden></div>
+      </aside>
+    </div>
+
+    <div id="result"></div>
+  </section>
+
+  <!-- ───────────── 소품 미리보기 ───────────── -->
+  <section id="view-try" role="tabpanel" aria-labelledby="tab-try" hidden>
+    <div class="try-grid">
+      <div class="viewer">
+        <div class="viewer-bar">
+          <div class="thumbs" id="tryThumbs" style="padding:0"></div>
+        </div>
+        <div id="tryStage"><canvas id="cvTry" aria-label="소품을 올린 거실 사진"></canvas></div>
+        <div class="viewer-foot">
+          <span class="muted">소품을 끌어서 옮기고, 오른쪽에서 크기와 각도를 맞추세요.</span>
+          <button class="btn small" id="saveTry" hidden>이미지 저장</button>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="소품 설정">
+        <div class="field">
+          <span class="lbl">사고 싶은 소품 사진</span>
+          <div class="product-prev">
+            <canvas id="prodPrev" width="144" height="144"></canvas>
+            <div class="row">
+              <button class="btn small" id="prodPick">사진 올리기</button>
+              <span class="note">쇼핑몰 상품 사진을 저장해서 올리거나 붙여넣기(Ctrl+V)</span>
+            </div>
+          </div>
+          <input type="file" id="prodIn" accept="image/*" hidden>
+        </div>
+        <div class="field">
+          <label for="prodName">상품 이름 · 크기 <span class="muted" style="font-weight:400">(선택)</span></label>
+          <input type="text" id="prodName" placeholder="예: 원목 벽시계 지름 30cm">
+        </div>
+        <div class="field">
+          <span class="lbl">배경 지우기</span>
+          <div class="range"><span>강도</span><input type="range" id="bgTol" min="0" max="90" value="38"><output id="bgTolO">38</output></div>
+        </div>
+        <div class="field">
+          <span class="lbl">맞추기</span>
+          <div class="range"><span>크기</span><input type="range" id="tScale" min="2" max="80" value="14"><output id="tScaleO">14%</output></div>
+          <div class="range"><span>각도</span><input type="range" id="tRot" min="-45" max="45" value="0"><output id="tRotO">0°</output></div>
+          <div class="range"><span>밝기</span><input type="range" id="tBright" min="50" max="130" value="92"><output id="tBrightO">92</output></div>
+          <div class="range"><span>그림자</span><input type="range" id="tShadow" min="0" max="100" value="45"><output id="tShadowO">45</output></div>
+        </div>
+        <div class="row">
+          <button class="btn" id="autoPlace">알맞은 자리 찾기</button>
+          <button class="btn primary" id="evalBtn">어울리는지 평가</button>
+        </div>
+        <div id="tryStatus" class="status" hidden></div>
+        <div id="evalOut" class="eval"></div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<script>
+/* 예시 데이터: 빌드할 때 사진과 미리 분석한 결과가 들어갑니다. */
+const SAMPLE = /*__SAMPLE__*/null;
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k === "style") n.style.cssText = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
+  return n;
+};
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const won = (m) => m >= 10000 ? (m / 10000).toFixed(m % 10000 ? 1 : 0) + "억" : m.toLocaleString("ko-KR") + "만원";
+
+const STYLES = ["아늑하게", "미니멀", "북유럽", "재팬디", "빈티지", "호텔 라운지", "모던 클래식"];
+const CONDS = ["전월세(못 박기 어려움)", "아이 있음", "반려동물", "사계절 쓰는 소품 선호", "새로 사기보다 재배치 위주"];
+
+const state = {
+  photos: [],          // {name, src, img, w, h}
+  sel: 0,
+  styles: new Set(["아늑하게"]),
+  conds: new Set(),
+  analysis: null,
+  fromSample: false,
+  view: { remove: true, add: true, light: true, labels: true },
+  split: 0.5,
+  hot: null,
+};
+
+/* ───────── 공통: 이미지 로딩 ───────── */
+function loadImg(src) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+}
+async function fileToPhoto(file, max = 1400) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImg(url);
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const src = c.toDataURL("image/jpeg", 0.86);
+    const im2 = await loadImg(src);
+    return { name: file.name || "사진", src, img: im2, w: c.width, h: c.height };
+  } finally { URL.revokeObjectURL(url); }
+}
+function canvasBlob(source, max = 1568, type = "image/jpeg", q = 0.86) {
+  const w0 = source.naturalWidth || source.width, h0 = source.naturalHeight || source.height;
+  const s = Math.min(1, max / Math.max(w0, h0));
+  const c = document.createElement("canvas");
+  c.width = Math.round(w0 * s); c.height = Math.round(h0 * s);
+  c.getContext("2d").drawImage(source, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, type, q));
+}
+
+/* ───────── Claude 연결 ───────── */
+let samplePromise = null;
+function getSample() {
+  if (!samplePromise) samplePromise = (window.claude?.use ? window.claude.use("sample") : Promise.resolve(null)).catch(() => null);
+  return samplePromise;
+}
+let downloadsPromise = null;
+function getDownloads() {
+  if (!downloadsPromise) downloadsPromise = (window.claude?.use ? window.claude.use("downloads") : Promise.resolve(null)).catch(() => null);
+  return downloadsPromise;
+}
+function errCopy(e) {
+  const c = e?.code;
+  if (c === "not_granted") return "Claude 사용을 허용하지 않아서 분석을 못 했어요. 페이지의 권한 메뉴에서 허용하면 다시 쓸 수 있어요.";
+  if (c === "rate_limited") return "요청이 몰렸어요. 1분쯤 뒤에 다시 눌러 주세요.";
+  if (c === "images_unavailable") return "이 화면에서는 사진을 Claude에게 보낼 수 없어요. claude.ai에서 열어 주세요.";
+  if (c === "image_rejected") return "사진 형식이나 장수가 맞지 않아요. JPG·PNG로 4장 이내를 올려 주세요.";
+  if (c === "cancelled") return "분석을 멈췄어요.";
+  if (c === "parse_error" || e instanceof SyntaxError) return "답변을 읽지 못했어요. 한 번 더 눌러 주세요.";
+  return "분석 중에 문제가 생겼어요. 잠시 뒤 다시 눌러 주세요.";
+}
+
+/* ───────── 사진 복원(빼기): 주변 질감을 옮겨 붙이고 경계를 부드럽게 맞춤 ───────── */
+function coonsFill(D, W, x0, y0, w, h, getB) {
+  // getB(px,py) -> [r,g,b] 경계 값. Coons 보간으로 내부를 채운 배열 반환
+  const out = new Float32Array(w * h * 3);
+  const c00 = getB(x0 - 1, y0 - 1), c10 = getB(x0 + w, y0 - 1), c01 = getB(x0 - 1, y0 + h), c11 = getB(x0 + w, y0 + h);
+  for (let j = 0; j < h; j++) {
+    const v = (j + 1) / (h + 1);
+    const L = getB(x0 - 1, y0 + j), R = getB(x0 + w, y0 + j);
+    for (let i = 0; i < w; i++) {
+      const u = (i + 1) / (w + 1);
+      const T = getB(x0 + i, y0 - 1), B = getB(x0 + i, y0 + h);
+      for (let k = 0; k < 3; k++) {
+        out[(j * w + i) * 3 + k] = (1 - u) * L[k] + u * R[k] + (1 - v) * T[k] + v * B[k]
+          - ((1 - u) * (1 - v) * c00[k] + u * (1 - v) * c10[k] + (1 - u) * v * c01[k] + u * v * c11[k]);
+      }
+    }
+  }
+  return out;
+}
+function boxBlur(src, w, h, r) { // 3채널 Float32 분리형 박스 블러
+  const tmp = new Float32Array(src.length), out = new Float32Array(src.length);
+  for (let pass = 0; pass < 2; pass++) {
+    const A = pass ? tmp : src, B = pass ? out : tmp, n1 = pass ? w : h, n2 = pass ? h : w;
+    for (let a = 0; a < n1; a++) for (let k = 0; k < 3; k++) {
+      let acc = 0, cnt = 0;
+      const at = (b2) => pass ? (b2 * w + a) * 3 + k : (a * w + b2) * 3 + k;
+      for (let b2 = 0; b2 < Math.min(r, n2); b2++) { acc += A[at(b2)]; cnt++; }
+      for (let b2 = 0; b2 < n2; b2++) {
+        if (b2 + r < n2) { acc += A[at(b2 + r)]; cnt++; }
+        if (b2 - r - 1 >= 0) { acc -= A[at(b2 - r - 1)]; cnt--; }
+        B[at(b2)] = acc / cnt;
+      }
+    }
+  }
+  return out;
+}
+function erase(ctx, W, H, bx, by, bw, bh) {
+  // 1) 주변 띠의 평균색으로 부드럽게 채우고(Coons 보간)
+  // 2) 비슷한 주변 영역에서 '질감'만(고주파) 가져와 얹는다 → 얼룩 없이 자연스러운 바닥·벽 결
+  const pad = Math.round(Math.max(4, Math.min(bw, bh) * 0.08));
+  const x0 = clamp(Math.round(bx - pad), 2, W - 3), y0 = clamp(Math.round(by - pad), 2, H - 3);
+  const x1 = clamp(Math.round(bx + bw + pad), 3, W - 2), y1 = clamp(Math.round(by + bh + pad), 3, H - 2);
+  const w = x1 - x0, h = y1 - y0;
+  if (w < 3 || h < 3) return;
+  const img = ctx.getImageData(0, 0, W, H), D = img.data;
+  const at = (x, y) => (clamp(y, 0, H - 1) * W + clamp(x, 0, W - 1)) * 4;
+  // 경계 바깥 띠(두께 t)를 경계를 따라 평균 → 경계값이 매끈해져 줄무늬가 안 생김
+  const t = Math.max(3, Math.round(Math.min(w, h) * 0.05)), win = Math.max(2, Math.round(Math.max(w, h) * 0.04));
+  const band = (X, Y) => {
+    const out = [0, 0, 0]; let n = 0;
+    const horiz = Y < y0 || Y >= y1;
+    for (let s2 = -win; s2 <= win; s2 += Math.max(1, win >> 2)) for (let d = 0; d < t; d += Math.max(1, t >> 2)) {
+      let px, py;
+      if (horiz) { px = X + s2; py = Y < y0 ? y0 - 1 - d : y1 + d; } else { py = Y + s2; px = X < x0 ? x0 - 1 - d : x1 + d; }
+      const o = at(px, py); out[0] += D[o]; out[1] += D[o + 1]; out[2] += D[o + 2]; n++;
+    }
+    return [out[0] / n, out[1] / n, out[2] / n];
+  };
+  const base = coonsFill(D, W, x0, y0, w, h, band);
+  // 질감 원천: 위·아래·좌·우 이웃 중 경계 띠 평균색이 가장 비슷한 곳
+  let best = null, bestS = Infinity;
+  for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [0, 2], [2, 0], [-2, 0], [0, -2]]) {
+    const sx = x0 + Math.round(dx * w * 1.1), sy = y0 + Math.round(dy * h * 1.1);
+    if (sx < 0 || sy < 0 || sx + w > W || sy + h > H) continue;
+    let s = 0, n = 0;
+    for (let j = 0; j < h; j += Math.max(1, h >> 4)) for (let i = 0; i < w; i += Math.max(1, w >> 4)) {
+      const o = at(sx + i, sy + j), b2 = (j * w + i) * 3;
+      s += Math.abs(D[o] - base[b2]) + Math.abs(D[o + 1] - base[b2 + 1]) + Math.abs(D[o + 2] - base[b2 + 2]); n++;
+    }
+    s /= n; if (s < bestS) { bestS = s; best = [sx, sy]; }
+  }
+  const out = new Uint8ClampedArray(D);
+  let detail = null;
+  if (best) {
+    const src = new Float32Array(w * h * 3);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const o = at(best[0] + i, best[1] + j), b2 = (j * w + i) * 3; src[b2] = D[o]; src[b2 + 1] = D[o + 1]; src[b2 + 2] = D[o + 2]; }
+    const bl = boxBlur(src, w, h, Math.max(2, Math.round(Math.min(w, h) / 12)));
+    detail = new Float32Array(src.length);
+    // 원천이 주변과 많이 다르면 질감도 약하게
+    const k = bestS < 25 ? .9 : bestS < 50 ? .55 : .3;
+    for (let i = 0; i < src.length; i++) detail[i] = clamp((src[i] - bl[i]) * k, -28, 28);
+  }
+  const fe = Math.max(2, Math.round(Math.min(w, h) * 0.12));
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const o = ((y0 + j) * W + x0 + i) * 4, b2 = (j * w + i) * 3;
+    const e = Math.min(i, j, w - 1 - i, h - 1 - j), a = e >= fe ? 1 : (e + 1) / (fe + 1);
+    for (let k = 0; k < 3; k++) {
+      const v = base[b2 + k] + (detail ? detail[b2 + k] : 0);
+      out[o + k] = D[o + k] * (1 - a) + v * a;
+    }
+  }
+  ctx.putImageData(new ImageData(out, W, H), 0, 0);
+}
+
+/* ───────── 소품 그리기(더하기) ───────── */
+function hexRgb(hex, fb = [190, 170, 140]) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return fb;
+  const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255];
+}
+const rgba = (c, a = 1) => `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+const shade = (c, f) => c.map(v => clamp(v * f, 0, 255));
+let noiseCanvas = null;
+function noise() {
+  if (noiseCanvas) return noiseCanvas;
+  const c = document.createElement("canvas"); c.width = c.height = 96;
+  const x = c.getContext("2d"), d = x.createImageData(96, 96);
+  for (let i = 0; i < d.data.length; i += 4) { const v = 110 + Math.random() * 145; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  x.putImageData(d, 0, 0); return (noiseCanvas = c);
+}
+function quadPath(ctx, q) { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.closePath(); }
+function lerpP(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
+function insetQuad(q, t) { // 각 꼭짓점을 중심 쪽으로 t만큼
+  const cx = q.reduce((s, p) => s + p[0], 0) / 4, cy = q.reduce((s, p) => s + p[1], 0) / 4;
+  return q.map(p => lerpP(p, [cx, cy], t));
+}
+function boxQuad(b) { return [[b[0], b[1]], [b[0] + b[2], b[1]], [b[0] + b[2], b[1] + b[3]], [b[0], b[1] + b[3]]]; }
+
+function drawRug(ctx, q, col) {
+  const c = hexRgb(col, [214, 200, 176]);
+  ctx.save();
+  // 바닥에 닿는 그림자
+  ctx.shadowColor = "rgba(0,0,0,.28)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+  quadPath(ctx, q); ctx.fillStyle = rgba(c); ctx.fill();
+  ctx.shadowColor = "transparent";
+  quadPath(ctx, q); ctx.clip();
+  const ys = q.map(p => p[1]), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const g = ctx.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, rgba(shade(c, .78))); g.addColorStop(1, rgba(shade(c, .97)));
+  ctx.fillStyle = g; ctx.fillRect(0, y0, ctx.canvas.width, y1 - y0);
+  ctx.globalAlpha = .16; ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = ctx.createPattern(noise(), "repeat"); ctx.fillRect(0, y0, ctx.canvas.width, y1 - y0);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  // 테두리 라인 두 줄
+  ctx.strokeStyle = rgba(shade(c, .72), .75); ctx.lineWidth = Math.max(1.5, (y1 - y0) * .012);
+  quadPath(ctx, insetQuad(q, .07)); ctx.stroke();
+  ctx.lineWidth *= .6; quadPath(ctx, insetQuad(q, .1)); ctx.stroke();
+  ctx.restore();
+}
+function drawPlant(ctx, b, col) {
+  const [x, y, w, h] = b, leaf = hexRgb(col, [92, 112, 70]);
+  ctx.save();
+  // 화분
+  const pw = w * .5, ph = h * .2, px = x + (w - pw) / 2, py = y + h - ph;
+  ctx.shadowColor = "rgba(0,0,0,.3)"; ctx.shadowBlur = w * .2; ctx.shadowOffsetY = h * .01;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + pw, py); ctx.lineTo(px + pw * .88, y + h); ctx.lineTo(px + pw * .12, y + h); ctx.closePath();
+  const pg = ctx.createLinearGradient(px, 0, px + pw, 0);
+  pg.addColorStop(0, "#cfc8bc"); pg.addColorStop(.5, "#ece7de"); pg.addColorStop(1, "#b7afa2");
+  ctx.fillStyle = pg; ctx.fill(); ctx.shadowColor = "transparent";
+  // 줄기
+  ctx.strokeStyle = "#6b5a44"; ctx.lineWidth = Math.max(1.5, w * .035);
+  ctx.beginPath(); ctx.moveTo(x + w / 2, py); ctx.bezierCurveTo(x + w * .46, y + h * .6, x + w * .56, y + h * .4, x + w * .5, y + h * .18); ctx.stroke();
+  // 잎: 위로 갈수록 작고 촘촘하게
+  const rnd = mulberry(Math.round(x * 7 + y * 13));
+  for (let i = 0; i < 70; i++) {
+    const t = rnd(), cy = y + h * (.04 + t * .62), spread = w * (.18 + .32 * Math.sin(Math.PI * (0.15 + t * .8)));
+    const cx = x + w / 2 + (rnd() - .5) * 2 * spread;
+    const L = w * (.09 + rnd() * .07), a = (rnd() - .5) * 2.4;
+    const f = .75 + rnd() * .45;
+    ctx.fillStyle = rgba(shade(leaf, f), .95);
+    ctx.beginPath(); ctx.ellipse(cx, cy, L, L * .36, a, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function drawCushion(ctx, b, col) {
+  const [x, y, w, h] = b, c = hexRgb(col, [110, 115, 70]);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = w * .12; ctx.shadowOffsetY = h * .06;
+  const r = Math.min(w, h) * .22;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y + h * .04); ctx.quadraticCurveTo(x + w / 2, y + h * .12, x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w * .97, y + r);
+  ctx.quadraticCurveTo(x + w * .9, y + h / 2, x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h * .98);
+  ctx.quadraticCurveTo(x + w / 2, y + h * .9, x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x + w * .02, y + h - r);
+  ctx.quadraticCurveTo(x + w * .1, y + h / 2, x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y + h * .04);
+  const g = ctx.createRadialGradient(x + w * .45, y + h * .4, w * .05, x + w / 2, y + h / 2, w * .7);
+  g.addColorStop(0, rgba(shade(c, 1.15))); g.addColorStop(1, rgba(shade(c, .72)));
+  ctx.fillStyle = g; ctx.fill();
+  ctx.shadowColor = "transparent"; ctx.clip();
+  ctx.globalAlpha = .2; ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = ctx.createPattern(noise(), "repeat"); ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+function drawThrow(ctx, b, col) {
+  const [x, y, w, h] = b, c = hexRgb(col, [196, 182, 156]);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.3)"; ctx.shadowBlur = w * .08; ctx.shadowOffsetY = h * .04;
+  ctx.beginPath();
+  ctx.moveTo(x + w * .1, y); ctx.lineTo(x + w * .9, y + h * .08);
+  ctx.quadraticCurveTo(x + w * 1.02, y + h * .5, x + w * .86, y + h);
+  ctx.lineTo(x + w * .2, y + h * .94); ctx.quadraticCurveTo(x - w * .02, y + h * .5, x + w * .1, y);
+  ctx.fillStyle = rgba(c); ctx.fill(); ctx.shadowColor = "transparent"; ctx.clip();
+  ctx.strokeStyle = rgba(shade(c, .78), .8); ctx.lineWidth = Math.max(1, w * .03);
+  for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(x, y + h * i / 6 - h * .05); ctx.quadraticCurveTo(x + w / 2, y + h * i / 6 + h * .04, x + w, y + h * i / 6); ctx.stroke(); }
+  ctx.restore();
+}
+function drawArt(ctx, q, col) {
+  const c = hexRgb(col, [196, 140, 92]);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.25)"; ctx.shadowBlur = 12; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 5;
+  quadPath(ctx, q); ctx.fillStyle = "#2b2622"; ctx.fill(); ctx.shadowColor = "transparent";
+  const mat = insetQuad(q, .05); quadPath(ctx, mat); ctx.fillStyle = "#f3efe7"; ctx.fill();
+  const pic = insetQuad(q, .2); quadPath(ctx, pic); ctx.save(); ctx.clip();
+  const xs = pic.map(p => p[0]), ys = pic.map(p => p[1]);
+  const X = Math.min(...xs), Y = Math.min(...ys), Wd = Math.max(...xs) - X, Hd = Math.max(...ys) - Y;
+  ctx.fillStyle = "#e9e1d3"; ctx.fillRect(X, Y, Wd, Hd);
+  ctx.fillStyle = rgba(c); ctx.beginPath(); ctx.ellipse(X + Wd * .38, Y + Hd * .42, Wd * .28, Hd * .3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = rgba(shade(c, .55), .9); ctx.fillRect(X + Wd * .5, Y + Hd * .55, Wd * .5, Hd * .45);
+  ctx.fillStyle = "rgba(60,70,50,.75)"; ctx.fillRect(X, Y + Hd * .78, Wd * .45, Hd * .22);
+  ctx.restore(); ctx.restore();
+}
+function drawSideTable(ctx, b, col) {
+  const [x, y, w, h] = b, c = hexRgb(col, [168, 120, 72]);
+  ctx.save(); ctx.shadowColor = "rgba(0,0,0,.3)"; ctx.shadowBlur = w * .15; ctx.shadowOffsetY = h * .05;
+  ctx.fillStyle = rgba(shade(c, .8));
+  ctx.fillRect(x + w * .45, y + h * .18, w * .1, h * .78);
+  ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * .96, w * .32, h * .05, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * .16, w * .5, h * .12, 0, 0, Math.PI * 2);
+  ctx.fillStyle = rgba(shade(c, .7)); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * .13, w * .5, h * .11, 0, 0, Math.PI * 2);
+  ctx.fillStyle = rgba(c); ctx.fill();
+  ctx.restore();
+}
+function drawTray(ctx, b, col) {
+  const [x, y, w, h] = b, c = hexRgb(col, [140, 100, 64]);
+  ctx.save(); ctx.shadowColor = "rgba(0,0,0,.25)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+  ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fillStyle = rgba(shade(c, .8)); ctx.fill();
+  ctx.shadowColor = "transparent"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * .45, w * .44, h * .36, 0, 0, Math.PI * 2); ctx.fillStyle = rgba(c); ctx.fill();
+  ctx.restore();
+}
+function drawLamp(ctx, b, col) {
+  const [x, y, w, h] = b, c = hexRgb(col, [236, 226, 206]);
+  ctx.save();
+  const g = ctx.createRadialGradient(x + w / 2, y + h * .3, 0, x + w / 2, y + h * .3, w * 1.6);
+  g.addColorStop(0, "rgba(255,200,130,.45)"); g.addColorStop(1, "rgba(255,200,130,0)");
+  ctx.globalCompositeOperation = "screen"; ctx.fillStyle = g; ctx.fillRect(x - w * 1.6, y - h, w * 4.2, h * 2.6);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#3a3632"; ctx.fillRect(x + w * .47, y + h * .35, w * .06, h * .6);
+  ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * .97, w * .25, h * .03, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x + w * .2, y); ctx.lineTo(x + w * .8, y); ctx.lineTo(x + w, y + h * .35); ctx.lineTo(x, y + h * .35); ctx.closePath();
+  ctx.fillStyle = rgba(c); ctx.fill();
+  ctx.restore();
+}
+function drawCurtain(ctx, b, col) {
+  const [x, y, w, h] = b, c = hexRgb(col, [232, 224, 210]);
+  ctx.save(); ctx.globalAlpha = .9;
+  const n = Math.max(4, Math.round(w / Math.max(8, h * .05)));
+  for (let i = 0; i < n; i++) {
+    const gx = x + w * i / n, g = ctx.createLinearGradient(gx, 0, gx + w / n, 0);
+    g.addColorStop(0, rgba(shade(c, .86))); g.addColorStop(.5, rgba(shade(c, 1.05))); g.addColorStop(1, rgba(shade(c, .9)));
+    ctx.fillStyle = g; ctx.fillRect(gx, y, w / n + 1, h);
+  }
+  ctx.restore();
+}
+function drawGeneric(ctx, b, col, label) {
+  const [x, y, w, h] = b, c = hexRgb(col, [185, 119, 47]);
+  ctx.save(); ctx.setLineDash([6, 4]); ctx.strokeStyle = rgba(c); ctx.lineWidth = 2;
+  ctx.fillStyle = rgba(c, .16); ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function drawProp(ctx, kind, mark, col, label) {
+  const q = mark.quadPx, b = mark.boxPx;
+  switch (kind) {
+    case "rug": return drawRug(ctx, q || boxQuad(b), col);
+    case "art": case "mirror": return drawArt(ctx, q || boxQuad(b), col);
+    case "plant": return drawPlant(ctx, b, col);
+    case "cushion": return drawCushion(ctx, b, col);
+    case "throw": return drawThrow(ctx, b, col);
+    case "sidetable": return drawSideTable(ctx, b, col);
+    case "tray": return drawTray(ctx, b, col);
+    case "lamp": return drawLamp(ctx, b, col);
+    case "curtain": return drawCurtain(ctx, b, col);
+    default: return drawGeneric(ctx, b, col, label);
+  }
+}
+
+/* 조명: 색온도를 따뜻하게 + 램프 주변 빛 번짐 */
+function warmLight(ctx, W, H, kelvin, glows) {
+  const k = clamp(kelvin || 2700, 2200, 4000), t = (4000 - k) / 1800; // 0..1
+  ctx.save();
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = `rgba(255,${Math.round(236 - 26 * t)},${Math.round(212 - 52 * t)},1)`;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "multiply";
+  const v = ctx.createRadialGradient(W / 2, H * .55, Math.min(W, H) * .35, W / 2, H * .55, Math.max(W, H) * .8);
+  v.addColorStop(0, "rgba(255,255,255,1)"); v.addColorStop(1, "rgba(150,135,120,1)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "screen";
+  for (const g of glows) {
+    const r = g.r * Math.max(W, H);
+    const gr = ctx.createRadialGradient(g.x * W, g.y * H, 0, g.x * W, g.y * H, r);
+    gr.addColorStop(0, "rgba(255,196,120,.55)"); gr.addColorStop(.45, "rgba(255,170,90,.18)"); gr.addColorStop(1, "rgba(255,170,90,0)");
+    ctx.fillStyle = gr; ctx.fillRect(g.x * W - r, g.y * H - r, r * 2, r * 2);
+  }
+  ctx.restore();
+}
+
+function drawPin(ctx, x, y, n, color, s) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, s, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  ctx.lineWidth = Math.max(1.5, s * .16); ctx.strokeStyle = "#fff"; ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = `600 ${Math.round(s * 1.05)}px ${getComputedStyle(document.body).getPropertyValue("--f-mono") || "monospace"}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(n), x, y + s * .05);
+  ctx.restore();
+}
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+/* ───────── 분석 결과 정리 ───────── */
+function normBox(b) { if (!Array.isArray(b) || b.length < 4) return null; const v = b.map(Number); if (v.some(isNaN)) return null; return [clamp(v[0], 0, 1), clamp(v[1], 0, 1), clamp(v[2], 0.005, 1), clamp(v[3], 0.005, 1)]; }
+function normQuad(q) { if (!Array.isArray(q) || q.length !== 4) return null; const v = q.map(p => [Number(p?.[0]), Number(p?.[1])]); if (v.flat().some(isNaN)) return null; return v.map(([x, y]) => [clamp(x, 0, 1), clamp(y, 0, 1)]); }
+function normalizeAnalysis(a) {
+  const arr = (x) => Array.isArray(x) ? x : [];
+  const marks = (m) => arr(m).map(k => ({ photo: Number(k?.photo) || 0, box: normBox(k?.box), quad: normQuad(k?.quad) })).filter(k => k.box || k.quad);
+  const out = {
+    headline: String(a?.headline || "분석 결과"),
+    diagnosis: String(a?.diagnosis || ""),
+    keep: arr(a?.keep).map(String),
+    palette: arr(a?.palette).filter(p => /^#[0-9a-f]{6}$/i.test(p?.hex || "")),
+    palette_after: arr(a?.palette_after).filter(p => /^#[0-9a-f]{6}$/i.test(p?.hex || "")),
+    remove: arr(a?.remove).map((r, i) => ({ id: "r" + (i + 1), title: String(r?.title || "정리할 것"), reason: String(r?.reason || ""), marks: marks(r?.marks) })),
+    add: arr(a?.add).map((r, i) => ({ id: "a" + (i + 1), title: String(r?.title || "추천 소품"), reason: String(r?.reason || ""), where: String(r?.where || ""),
+      kind: String(r?.kind || "generic"), color: String(r?.color || ""), price_min: Number(r?.price_min) || 0, price_max: Number(r?.price_max) || 0,
+      search: String(r?.search || r?.title || ""), marks: marks(r?.marks) })),
+    move: arr(a?.move).map((r, i) => ({ id: "m" + (i + 1), title: String(r?.title || "배치 변경"), from: String(r?.from || ""), to: String(r?.to || ""), reason: String(r?.reason || "") })),
+    lighting: { kelvin: Number(a?.lighting?.kelvin) || 2700, tips: arr(a?.lighting?.tips).map(String),
+      glows: arr(a?.lighting?.glows).map(g => ({ photo: Number(g?.photo) || 0, x: clamp(+g?.x || 0, 0, 1), y: clamp(+g?.y || 0, 0, 1), r: clamp(+g?.r || .15, .03, .6) })) },
+    plan: a?.plan && Array.isArray(a.plan.before) ? a.plan : null,
+    render_prompt: String(a?.render_prompt || ""),
+  };
+  return out;
+}
+
+/* ───────── 뷰어 ───────── */
+const cvB = $("#cvBefore"), cvA = $("#cvAfter"), clip = $("#afterClip"), handle = $("#handle"), stage = $("#stage");
+let renderToken = 0;
+function renderViewer() {
+  const p = state.photos[state.sel];
+  if (!p) { cvB.width = 1200; cvB.height = 800; const c = cvB.getContext("2d"); c.fillStyle = "#222"; c.fillRect(0, 0, 1200, 800); cvA.width = 0; return; }
+  const W = p.w, H = p.h;
+  cvB.width = cvA.width = W; cvB.height = cvA.height = H;
+  cvB.getContext("2d").drawImage(p.img, 0, 0, W, H);
+  const ctx = cvA.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(p.img, 0, 0, W, H);
+  const a = state.analysis, idx = state.sel;
+  const pins = [];
+  if (a) {
+    const toPx = (m) => ({
+      boxPx: m.box ? [m.box[0] * W, m.box[1] * H, m.box[2] * W, m.box[3] * H] : null,
+      quadPx: m.quad ? m.quad.map(([x, y]) => [x * W, y * H]) : null,
+    });
+    if (state.view.remove) a.remove.forEach((r, i) => r.marks.filter(m => m.photo === idx).forEach(m => {
+      const P = toPx(m), b = P.boxPx || quadBounds(P.quadPx);
+      erase(ctx, W, H, b[0], b[1], b[2], b[3]);
+      pins.push({ x: b[0] + b[2] / 2, y: b[1] + b[3] / 2, n: i + 1, c: cssVar("--remove"), id: r.id, b });
+    }));
+    if (state.view.add) {
+      // 바닥(러그)을 먼저, 나머지는 아래쪽에 있는 것부터 그려서 앞뒤가 맞게
+      const items = [];
+      a.add.forEach((r, i) => r.marks.filter(m => m.photo === idx).forEach(m => items.push({ r, i, m: toPx(m) })));
+      items.sort((u, v) => (u.r.kind === "rug" ? -1 : 0) - (v.r.kind === "rug" ? -1 : 0) || bottomOf(u.m) - bottomOf(v.m));
+      for (const { r, i, m } of items) {
+        drawProp(ctx, r.kind, m, r.color, r.title);
+        const b = m.boxPx || quadBounds(m.quadPx);
+        pins.push({ x: b[0] + b[2] / 2, y: b[1] + Math.min(b[3] / 2, b[3] * .3 + 10), n: i + 1, c: cssVar("--add"), id: r.id, b });
+      }
+    }
+    // 조명은 소품까지 그린 뒤에 입혀야 새 소품도 같은 빛을 받는다
+    if (state.view.light) warmLight(ctx, W, H, a.lighting.kelvin, a.lighting.glows.filter(g => g.photo === idx));
+    if (state.view.labels) {
+      const s = Math.max(10, Math.round(Math.max(W, H) * .013));
+      for (const pin of pins) {
+        if (state.hot && pin.id === state.hot) {
+          ctx.save(); ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(2, s * .25); ctx.setLineDash([s * .8, s * .5]);
+          ctx.strokeRect(pin.b[0], pin.b[1], pin.b[2], pin.b[3]); ctx.restore();
+        }
+        drawPin(ctx, pin.x, pin.y, pin.n, pin.c, s);
+      }
+    }
+  }
+  layoutSplit();
+  const sb = $("#saveAfter"); if (sb) sb.hidden = !a;
+}
+function quadBounds(q) { const xs = q.map(p => p[0]), ys = q.map(p => p[1]); const x = Math.min(...xs), y = Math.min(...ys); return [x, y, Math.max(...xs) - x, Math.max(...ys) - y]; }
+function bottomOf(m) { const b = m.boxPx || quadBounds(m.quadPx); return b[1] + b[3]; }
+function layoutSplit() {
+  const r = stage.getBoundingClientRect();
+  cvA.style.width = r.width + "px";
+  clip.style.clipPath = `inset(0 0 0 ${state.split * 100}%)`;
+  handle.style.left = `calc(${state.split * 100}% - 1px)`;
+  handle.setAttribute("aria-valuenow", Math.round(state.split * 100));
+}
+window.addEventListener("resize", layoutSplit);
+(() => {
+  let dragging = false;
+  const set = (ev) => { const r = stage.getBoundingClientRect(); state.split = clamp((ev.clientX - r.left) / r.width, 0, 1); layoutSplit(); };
+  stage.addEventListener("pointerdown", (ev) => { if (ev.button !== 0) return; dragging = true; stage.setPointerCapture(ev.pointerId); set(ev); });
+  stage.addEventListener("pointermove", (ev) => { if (dragging) set(ev); });
+  stage.addEventListener("pointerup", () => { dragging = false; });
+  stage.addEventListener("pointercancel", () => { dragging = false; });
+  handle.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowLeft") { state.split = clamp(state.split - .05, 0, 1); layoutSplit(); ev.preventDefault(); }
+    if (ev.key === "ArrowRight") { state.split = clamp(state.split + .05, 0, 1); layoutSplit(); ev.preventDefault(); }
+  });
+})();
+$("#toggles").addEventListener("click", (ev) => {
+  const b = ev.target.closest(".tg"); if (!b) return;
+  const k = b.dataset.k; state.view[k] = !state.view[k]; b.setAttribute("aria-pressed", String(state.view[k])); renderViewer();
+});
+
+/* ───────── 사진 목록 ───────── */
+function renderThumbs() {
+  const box = $("#thumbs"); box.replaceChildren();
+  state.photos.forEach((p, i) => {
+    const t = el("button", { class: "thumb", "aria-current": String(i === state.sel), "aria-label": `사진 ${i + 1} 보기`, onclick: () => { state.sel = i; renderThumbs(); renderViewer(); } },
+      el("img", { src: p.src, alt: "" }));
+    const x = el("button", { class: "x", "aria-label": `사진 ${i + 1} 빼기`, onclick: (ev) => { ev.stopPropagation(); removePhoto(i); } }, "×");
+    const wrap = el("div", { style: "position:relative;flex:0 0 auto" }, t, x);
+    box.append(wrap);
+  });
+  if (state.photos.length < 6) box.append(el("button", { class: "thumb add", onclick: () => $("#fileIn").click() }, "사진", el("br"), "추가"));
+  renderTryThumbs();
+}
+function removePhoto(i) {
+  state.photos.splice(i, 1);
+  // 사진 순서가 바뀌면 분석 좌표가 어긋나므로 결과를 비운다
+  if (state.analysis) { state.analysis = null; state.fromSample = false; renderResult(); }
+  state.sel = clamp(state.sel, 0, Math.max(0, state.photos.length - 1));
+  renderThumbs(); renderViewer();
+}
+async function addFiles(files) {
+  const list = [...files].filter(f => f.type.startsWith("image/"));
+  if (!list.length) return;
+  if (state.fromSample) { state.photos = []; state.analysis = null; state.fromSample = false; renderResult(); }
+  for (const f of list.slice(0, 6 - state.photos.length)) state.photos.push(await fileToPhoto(f));
+  if (state.analysis) { state.analysis = null; renderResult(); }
+  state.sel = Math.max(0, state.photos.length - list.length);
+  renderThumbs(); renderViewer();
+  showStatus("#analyzeStatus", "사진을 올렸어요. 분위기와 예산을 고르고 ‘사진 분석하고 제안 받기’를 누르세요.");
+}
+$("#fileIn").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
+(() => {
+  const dz = document.body;
+  dz.addEventListener("dragover", (e) => { if ([...e.dataTransfer.types].includes("Files")) { e.preventDefault(); $("#dropzone").classList.add("drag"); } });
+  dz.addEventListener("dragleave", (e) => { if (e.target === dz || !dz.contains(e.relatedTarget)) $("#dropzone").classList.remove("drag"); });
+  dz.addEventListener("drop", (e) => {
+    $("#dropzone").classList.remove("drag");
+    if (!e.dataTransfer.files.length) return; e.preventDefault();
+    if (!$("#view-try").hidden) setProductFile(e.dataTransfer.files[0]); else addFiles(e.dataTransfer.files);
+  });
+})();
+
+/* ───────── 옵션 칩 ───────── */
+function chipGroup(box, items, set, single = false) {
+  box.replaceChildren(...items.map(s => el("button", { class: "chip", "aria-pressed": String(set.has(s)), onclick: (ev) => {
+    if (single) set.clear();
+    set.has(s) && !single ? set.delete(s) : set.add(s);
+    chipGroup(box, items, set, single);
+  } }, s)));
+}
+chipGroup($("#styleChips"), STYLES, state.styles);
+chipGroup($("#condChips"), CONDS, state.conds);
+$("#budget").value = "50";
+
+function showStatus(sel, msg, kind = "") {
+  const s = $(sel); s.hidden = !msg; s.className = "status" + (kind ? " " + kind : "");
+  s.replaceChildren(); if (!msg) return;
+  if (kind === "busy") s.append(el("span", { class: "spinner", "aria-hidden": "true" }));
+  s.append(msg);
+}
+
+/* ───────── 분석 요청 ───────── */
+function analysisPrompt(n) {
+  return `당신은 시공 없이 소품·조명·배치만으로 집 분위기를 바꾸는 홈스타일링 전문가입니다.
+첨부한 사진 ${n}장은 같은 거실을 여러 각도에서 찍은 것입니다. 첨부 순서대로 사진 0, 사진 1, … 로 부릅니다.
+
+사용자 조건
+- 원하는 분위기: ${[...state.styles].join(", ") || "자유"}
+- 예산(새로 살 것 합계): ${$("#budget").value}만원 이하
+- 집 조건: ${[...state.conds].join(", ") || "없음"}
+- 메모: ${$("#memo").value.trim() || "없음"}
+
+규칙
+- 벽지·바닥·붙박이 교체 같은 시공은 제안하지 않습니다. 붙이는 훅, 꼭꼬핀, 전구 교체 정도는 괜찮습니다.
+- 사진에 실제로 보이는 물건만 '빼기'와 '옮기기'에 넣습니다. 이름은 사용자가 알아볼 수 있게 구체적으로(색, 위치).
+- '더하기'는 예산 안에서 3~7개. price_min, price_max는 만원 단위 정수.
+- 좌표는 모두 해당 사진의 가로·세로를 1로 둔 비율입니다(왼쪽 위가 0,0).
+  - 빼기 marks: 그 물건을 빈틈없이 감싸는 box [x, y, w, h]. 사진마다 하나씩, 보이는 사진 모두에 표시.
+  - 더하기 marks: 그 소품이 놓일 자리. 러그(rug)와 벽 액자(art)는 원근에 맞춘 네 꼭짓점 quad [[x,y]×4](왼위, 오른위, 오른아래, 왼아래)로, 나머지는 box로. 소품 크기는 주변 가구와 비교해 현실적인 크기로. 다른 가구 위에 겹치지 않게.
+- lighting.glows: 따뜻한 빛이 나올 자리(스탠드 갓, 테이블 조명 등) x, y와 반경 r(사진 긴 변 대비 비율 0.05~0.3).
+- plan: 위에서 내려다본 평면도. 단위 cm. 창이 있는 벽이 위쪽(y=0). 지금(before)과 제안 후(after)의 주요 가구 위치.
+- render_prompt: 사진 0을 이미지 편집 AI에 넣어 '제안 후' 사진을 만들 때 쓸 영어 프롬프트 한 단락. "EDIT the attached photo:"로 시작하고, 방 구조·카메라 각도는 그대로 두고 바꿀 것만 구체적으로.
+- 모든 설명은 한국어, 짧고 구체적으로. 장식적인 표현 없이 이유를 씁니다.
+
+아래 JSON 하나만 출력하세요.
+{
+ "headline": "이 거실을 한 줄로 진단 (25자 안팎)",
+ "diagnosis": "2~3문장",
+ "keep": ["이미 좋은 점", "..."],
+ "palette": [{"hex":"#RRGGBB","name":"지금 주요 색 이름"}],
+ "palette_after": [{"hex":"#RRGGBB","name":"제안 후 더해질 색"}],
+ "remove": [{"title":"", "reason":"", "marks":[{"photo":0,"box":[x,y,w,h]}]}],
+ "add": [{"title":"", "reason":"", "where":"", "kind":"rug|plant|cushion|throw|art|mirror|lamp|curtain|sidetable|tray|generic", "color":"#RRGGBB", "price_min":0, "price_max":0, "search":"쇼핑 검색어", "marks":[{"photo":0,"box":[x,y,w,h]} 또는 {"photo":0,"quad":[[x,y],[x,y],[x,y],[x,y]]}]}],
+ "move": [{"title":"", "from":"지금", "to":"제안", "reason":""}],
+ "lighting": {"kelvin":2700, "tips":["", ""], "glows":[{"photo":0,"x":0.5,"y":0.3,"r":0.15}]},
+ "plan": {"width":400, "depth":500, "before":[{"name":"소파","x":0,"y":0,"w":0,"h":0,"kind":"sofa|chair|table|storage|tv|lamp|plant|rug|other"}], "after":[...]},
+ "render_prompt": ""
+}`;
+}
+let analyzeCtl = null;
+$("#analyzeBtn").addEventListener("click", async () => {
+  if (analyzeCtl) { analyzeCtl.abort(); return; }
+  if (!state.photos.length) { $("#fileIn").click(); return; }
+  const sample = await getSample();
+  if (!sample) { showStatus("#analyzeStatus", "이 화면에서는 Claude에 연결할 수 없어요. claude.ai에서 이 페이지를 열면 분석할 수 있어요.", "err"); return; }
+  let lim = null; try { lim = await sample.limits(); } catch {}
+  if (!lim?.images) { showStatus("#analyzeStatus", "이 화면에서는 사진을 Claude에게 보낼 수 없어요. claude.ai에서 열어 주세요.", "err"); return; }
+  const n = Math.min(state.photos.length, lim.images.maxCount || 4);
+  const btn = $("#analyzeBtn");
+  analyzeCtl = new AbortController();
+  btn.textContent = "분석 멈추기";
+  showStatus("#analyzeStatus", `사진 ${n}장을 살펴보는 중이에요. 보통 30초~1분 걸려요.`, "busy");
+  try {
+    const blobs = await Promise.all(state.photos.slice(0, n).map(p => canvasBlob(p.img)));
+    const raw = await sample.json(analysisPrompt(n), { images: blobs, modelTier: "complex", signal: analyzeCtl.signal,
+      onText: () => showStatus("#analyzeStatus", "제안을 정리하는 중이에요…", "busy") });
+    state.analysis = normalizeAnalysis(raw);
+    state.fromSample = false;
+    if (state.photos.length > n) state.photos.length = n;
+    state.sel = 0;
+    showStatus("#analyzeStatus", n < state.photos.length ? `사진 ${n}장까지 분석했어요.` : "");
+    renderThumbs(); renderViewer(); renderResult();
+    $("#result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  } catch (e) {
+    showStatus("#analyzeStatus", errCopy(e), "err");
+  } finally {
+    analyzeCtl = null; btn.textContent = "사진 분석하고 제안 받기";
+  }
+});
+
+/* ───────── 결과 화면 ───────── */
+function renderResult() {
+  const box = $("#result"); box.replaceChildren();
+  const a = state.analysis; if (!a) return;
+  const tot = a.add.reduce((s, r) => [s[0] + r.price_min, s[1] + r.price_max], [0, 0]);
+
+  box.append(el("div", { class: "summary" },
+    state.fromSample ? el("div", {}, el("span", { class: "sample-flag" }, "올려주신 사진 5장으로 미리 분석한 결과")) : null,
+    el("p", { class: "headline" }, a.headline),
+    el("p", { class: "diag" }, a.diagnosis),
+    el("div", { class: "kv" },
+      a.palette.length ? el("span", { class: "row" }, el("b", {}, "지금 색"), el("span", { class: "palette" }, a.palette.map(p => el("span", { class: "sw", title: p.name, style: `background:${p.hex}` })))) : null,
+      a.palette_after.length ? el("span", { class: "row" }, el("b", {}, "더할 색"), el("span", { class: "palette" }, a.palette_after.map(p => el("span", { class: "sw", title: p.name, style: `background:${p.hex}` })))) : null,
+      el("span", {}, el("b", {}, "새로 살 것 "), el("span", { class: "mono" }, `${tot[0]}~${tot[1]}만원`)),
+    ),
+    a.keep.length ? el("p", { class: "muted", style: "font-size:13.5px" }, "그대로 두면 좋은 것: " + a.keep.join(" · ")) : null,
+  ));
+
+  const card = (r, i, color, body) => {
+    const photos = [...new Set((r.marks || []).map(m => m.photo))];
+    return el("button", { class: "card", style: `--c:${color}`, "data-id": r.id,
+      onclick: () => {
+        state.hot = state.hot === r.id ? null : r.id;
+        if (photos.length && !photos.includes(state.sel)) { state.sel = photos[0]; renderThumbs(); }
+        document.querySelectorAll(".card").forEach(c => c.classList.toggle("hot", c.dataset.id === state.hot));
+        renderViewer();
+        if (state.hot && photos.length) stage.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      } },
+      el("span", { class: "t" }, el("span", { class: "n" }, i + 1), r.title), ...body);
+  };
+  const col = (title, color, sub, items) => el("div", { class: "col", style: `--c:${color}` },
+    el("div", { class: "col-h" }, el("h2", {}, title), el("span", { class: "muted", style: "font-size:13px" }, sub)), ...items);
+
+  box.append(el("div", { class: "cols" },
+    col("빼기", "var(--remove)", `${a.remove.length}가지`, a.remove.map((r, i) => card(r, i, "var(--remove)", [el("span", { class: "r" }, r.reason)]))),
+    col("더하기", "var(--add)", `${a.add.length}가지`, a.add.map((r, i) => card(r, i, "var(--add)", [
+      el("span", { class: "r" }, r.reason),
+      el("span", { class: "meta" },
+        r.where ? el("span", {}, "자리: " + r.where) : null,
+        (r.price_min || r.price_max) ? el("span", { class: "price" }, `${r.price_min}~${r.price_max}만원`) : null,
+        el("a", { href: "https://search.shopping.naver.com/search/all?query=" + encodeURIComponent(r.search), target: "_blank", rel: "noopener", onclick: (e) => e.stopPropagation() }, "쇼핑 검색"),
+      )]))),
+    col("옮기기", "var(--move)", `${a.move.length}가지`, a.move.map((r, i) => card(r, i, "var(--move)", [
+      el("span", { class: "r" }, el("b", { style: "font-weight:500;color:var(--ink)" }, r.from), " → ", el("b", { style: "font-weight:500;color:var(--ink)" }, r.to)),
+      el("span", { class: "r" }, r.reason)]))),
+  ));
+
+  const lower = el("div", { class: "lower" });
+  if (a.plan) lower.append(planPanel(a.plan));
+  const side = el("div", { class: "panel" },
+    el("h2", {}, "조명"),
+    el("p", { class: "muted", style: "font-size:13.5px" }, `저녁 기준 색온도 `, el("span", { class: "mono" }, `${a.lighting.kelvin}K`), " 를 권해요."),
+    el("ul", { class: "light-list" }, a.lighting.tips.map(t => el("li", {}, t))));
+  if (a.render_prompt) {
+    const pre = el("div", { class: "prompt-box", id: "renderPrompt" }, a.render_prompt);
+    const copyBtn = el("button", { class: "btn small", onclick: async () => {
+      try { await navigator.clipboard.writeText(a.render_prompt); copyBtn.textContent = "복사했어요"; }
+      catch { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); copyBtn.textContent = "선택했어요. 복사하세요"; }
+      setTimeout(() => copyBtn.textContent = "프롬프트 복사", 2200);
+    } }, "프롬프트 복사");
+    side.append(el("div", { style: "height:4px" }), el("h2", {}, "실사 렌더용 프롬프트"),
+      el("p", { class: "muted", style: "font-size:13.5px" }, "사진처럼 자연스러운 ‘제안 후’ 이미지가 필요하면, 내 컴퓨터의 Claude Code에서 aicc-image 스킬에 사진 1과 이 프롬프트를 함께 주세요."),
+      pre, el("div", {}, copyBtn));
+  }
+  lower.append(side);
+  box.append(lower);
+}
+
+function planPanel(plan) {
+  let mode = "after";
+  const wrap = el("div", { class: "panel plan" });
+  const head = el("div", { class: "row", style: "justify-content:space-between" }, el("h2", {}, "배치 평면도"));
+  const seg = el("div", { class: "tabs" });
+  const svgBox = el("div", { class: "plan-wrap" });
+  const draw = () => {
+    seg.replaceChildren(...[["before", "지금"], ["after", "제안 후"]].map(([k, l]) => el("button", { "aria-selected": String(mode === k), onclick: () => { mode = k; draw(); } }, l)));
+    svgBox.innerHTML = planSvg(plan, mode);
+  };
+  head.append(seg); wrap.append(head, svgBox,
+    el("div", { class: "legend" }, el("span", {}, "위쪽이 창가 · 단위 cm"), el("span", {}, "점선은 새로 들일 것")));
+  draw();
+  return wrap;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function planSvg(plan, mode) {
+  const W = +plan.width || 400, D = +plan.depth || 500, pad = 34;
+  const items = (mode === "after" ? plan.after : plan.before) || [];
+  const before = new Set((plan.before || []).map(i => i.name));
+  const fill = { sofa: "#b9b1a3", chair: "#c9a36b", table: "#e2ddd3", storage: "#d8d6cf", tv: "#2a2a2a", lamp: "#efe2c4", plant: "#7f9665", rug: "#e3d6bf", other: "#cfcabf" };
+  let s = `<svg viewBox="${-pad} ${-pad} ${W + pad * 2} ${D + pad * 2}" role="img" aria-label="${mode === "after" ? "제안 후" : "지금"} 평면도">`;
+  s += `<rect x="0" y="0" width="${W}" height="${D}" fill="var(--sunk)" stroke="var(--ink)" stroke-width="3"/>`;
+  s += `<line x1="${W * .12}" y1="0" x2="${W * .92}" y2="0" stroke="#7fb4d6" stroke-width="7"/>`;
+  s += `<text x="${W / 2}" y="-12" text-anchor="middle" font-size="13" fill="var(--muted)">창</text>`;
+  const sorted = [...items].sort((a, b) => (a.kind === "rug" ? -1 : 0) - (b.kind === "rug" ? -1 : 0));
+  for (const it of sorted) {
+    const x = +it.x || 0, y = +it.y || 0, w = Math.max(6, +it.w || 30), h = Math.max(6, +it.h || 30);
+    const isNew = mode === "after" && !before.has(it.name);
+    const f = fill[it.kind] || fill.other;
+    const rot = +it.rot || 0;
+    s += `<g transform="rotate(${rot} ${x + w / 2} ${y + h / 2})">`;
+    s += it.kind === "plant" || it.kind === "lamp"
+      ? `<circle cx="${x + w / 2}" cy="${y + h / 2}" r="${Math.min(w, h) / 2}" fill="${f}" stroke="var(--ink)" stroke-width="1.2" ${isNew ? 'stroke-dasharray="5 4"' : ""}/>`
+      : `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="${f}" fill-opacity="${it.kind === "rug" ? .85 : 1}" stroke="${isNew ? "var(--add)" : "var(--ink)"}" stroke-width="${isNew ? 2 : 1.2}" ${isNew ? 'stroke-dasharray="7 5"' : ""}/>`;
+    s += `</g>`;
+    const ty = it.kind === "rug" ? y + h - 10 : y + h / 2 + 4;
+    s += `<text x="${x + w / 2}" y="${ty}" text-anchor="middle" font-size="${it.kind === "rug" ? 13 : 12}" fill="${it.kind === "tv" ? "#fff" : "#2b2a26"}" style="paint-order:stroke" stroke="${it.kind === "tv" ? "#2a2a2a" : "rgba(255,255,255,.7)"}" stroke-width="3">${esc(it.name)}</text>`;
+  }
+  s += `<text x="${W}" y="${D + 22}" text-anchor="end" font-size="12" fill="var(--muted)" font-family="var(--f-mono)">${W} × ${D}</text>`;
+  return s + `</svg>`;
+}
+
+/* 저장 */
+async function saveCanvas(canvas, filename) {
+  const dl = await getDownloads();
+  if (!dl) return false;
+  const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", .92));
+  try { await dl.save({ filename, data: blob }); return true; } catch { return false; }
+}
+$("#saveAfter").addEventListener("click", () => saveCanvas(cvA, `거실-제안후-${state.sel + 1}.jpg`));
+
+/* ───────── 탭 ───────── */
+function setTab(t) {
+  const plan = t === "plan";
+  $("#tab-plan").setAttribute("aria-selected", String(plan)); $("#tab-try").setAttribute("aria-selected", String(!plan));
+  $("#view-plan").hidden = !plan; $("#view-try").hidden = plan;
+  if (plan) { renderViewer(); } else { renderTry(); }
+  try { localStorage.setItem("mood-tab", t); } catch {}
+}
+$("#tab-plan").addEventListener("click", () => setTab("plan"));
+$("#tab-try").addEventListener("click", () => setTab("try"));
+
+/* ═════════════ 소품 미리보기 ═════════════ */
+const tryS = { sel: 0, prod: null, prodCut: null, cx: .5, cy: .4, scale: .14, rot: 0, bright: .92, shadow: .45, tol: 38, name: "" };
+const cvT = $("#cvTry"), tStage = $("#tryStage");
+
+function renderTryThumbs() {
+  const box = $("#tryThumbs"); box.replaceChildren();
+  state.photos.forEach((p, i) => box.append(el("button", { class: "thumb", style: "width:56px;height:56px", "aria-current": String(i === tryS.sel), "aria-label": `사진 ${i + 1}에 올려 보기`,
+    onclick: () => { tryS.sel = i; renderTryThumbs(); renderTry(); } }, el("img", { src: p.src, alt: "" }))));
+  box.append(el("button", { class: "thumb add", style: "width:56px;height:56px", onclick: () => $("#fileIn").click() }, "추가"));
+}
+
+// 상품 사진 배경 지우기: 가장자리에서 시작해 비슷한 색을 따라가며 투명하게
+function cutout(img, tol) {
+  const max = 900, s = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w = Math.round((img.naturalWidth || img.width) * s), h = Math.round((img.naturalHeight || img.height) * s);
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h), D = d.data;
+  if (tol > 0) {
+    // 이미 투명 배경이면 그대로
+    let transparent = 0; for (let i = 3; i < D.length; i += 4 * 97) if (D[i] < 20) transparent++;
+    if (transparent < (D.length / 4 / 97) * .05) {
+      const seen = new Uint8Array(w * h), q = new Int32Array(w * h); let qh = 0, qt = 0;
+      const t2 = (tol * 2.2) ** 2;
+      const push = (i, r, g, b) => { if (seen[i]) return; const o = i * 4; const dd = (D[o] - r) ** 2 + (D[o + 1] - g) ** 2 + (D[o + 2] - b) ** 2; if (dd > t2) return; seen[i] = 1; q[qt++] = i; };
+      // 가장자리 각 픽셀의 색을 기준으로 시작
+      const seeds = [];
+      for (let i = 0; i < w; i++) seeds.push(i, (h - 1) * w + i);
+      for (let j = 0; j < h; j++) seeds.push(j * w, j * w + w - 1);
+      for (const i of seeds) { const o = i * 4; push(i, D[o], D[o + 1], D[o + 2]); }
+      while (qh < qt) {
+        const i = q[qh++], px = i % w, py = (i / w) | 0, o = i * 4, r = D[o], g = D[o + 1], b = D[o + 2];
+        if (px > 0) push(i - 1, r, g, b); if (px < w - 1) push(i + 1, r, g, b);
+        if (py > 0) push(i - w, r, g, b); if (py < h - 1) push(i + w, r, g, b);
+      }
+      // 경계 부드럽게: 3×3 평균
+      const A = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) A[i] = seen[i] ? 0 : 1;
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+        let s2 = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = i + dx, Y = j + dy; if (X >= 0 && Y >= 0 && X < w && Y < h) { s2 += A[Y * w + X]; n++; } }
+        D[(j * w + i) * 4 + 3] = Math.min(D[(j * w + i) * 4 + 3], Math.round(255 * s2 / n));
+      }
+      x.putImageData(d, 0, 0);
+    }
+  }
+  // 투명 여백 잘라내기
+  const d2 = x.getImageData(0, 0, w, h).data; let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (d2[(j * w + i) * 4 + 3] > 24) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
+  if (x1 <= x0 || y1 <= y0) return c;
+  const out = document.createElement("canvas"); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+  out.getContext("2d").drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+function updateCut() {
+  if (!tryS.prod) return;
+  tryS.prodCut = cutout(tryS.prod, tryS.tol);
+  const pv = $("#prodPrev"), px = pv.getContext("2d"); px.clearRect(0, 0, pv.width, pv.height);
+  const c = tryS.prodCut, s = Math.min(pv.width / c.width, pv.height / c.height) * .9;
+  px.drawImage(c, (pv.width - c.width * s) / 2, (pv.height - c.height * s) / 2, c.width * s, c.height * s);
+}
+async function setProductFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const url = URL.createObjectURL(file);
+  try { tryS.prod = await loadImg(url); } finally { /* 이미지가 메모리에 올라간 뒤에 해제 */ setTimeout(() => URL.revokeObjectURL(url), 1000); }
+  updateCut(); clearEval(); renderTry();
+  showStatus("#tryStatus", "소품을 올렸어요. 사진 위에서 끌어 옮기거나 ‘알맞은 자리 찾기’를 눌러 보세요.");
+}
+$("#prodPick").addEventListener("click", () => $("#prodIn").click());
+$("#prodIn").addEventListener("change", (e) => { setProductFile(e.target.files[0]); e.target.value = ""; });
+document.addEventListener("paste", (e) => {
+  if ($("#view-try").hidden) return;
+  const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith("image/")); if (f) { e.preventDefault(); setProductFile(f); }
+});
+
+function renderTry(forExport = false) {
+  const p = state.photos[tryS.sel];
+  if (!p) { cvT.width = 1200; cvT.height = 800; const c = cvT.getContext("2d"); c.fillStyle = "#222"; c.fillRect(0, 0, 1200, 800); return; }
+  const W = p.w, H = p.h; cvT.width = W; cvT.height = H;
+  const ctx = cvT.getContext("2d"); ctx.drawImage(p.img, 0, 0, W, H);
+  const c = tryS.prodCut;
+  const st = $("#saveTry"); if (st) st.hidden = !c;
+  if (!c) {
+    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(0, H - 54, W, 54);
+    ctx.fillStyle = "#fff"; ctx.font = `500 ${Math.round(Math.max(14, W * .018))}px ${cssVar("--f-body")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("오른쪽에서 사고 싶은 소품 사진을 올려 주세요", W / 2, H - 27);
+    return;
+  }
+  const dw = tryS.scale * W, dh = dw * c.height / c.width, x = tryS.cx * W, y = tryS.cy * H;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(tryS.rot * Math.PI / 180);
+  if (tryS.shadow > 0) {
+    ctx.shadowColor = `rgba(0,0,0,${.15 + tryS.shadow * .45})`; ctx.shadowBlur = dw * (.03 + tryS.shadow * .08);
+    ctx.shadowOffsetX = dw * .02 * tryS.shadow; ctx.shadowOffsetY = dw * .05 * tryS.shadow;
+  }
+  ctx.filter = `brightness(${tryS.bright})`;
+  ctx.drawImage(c, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+  if (!forExport && dragState.active) {
+    ctx.save(); ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.setLineDash([8, 6]); ctx.lineWidth = Math.max(1.5, W * .002);
+    ctx.translate(x, y); ctx.rotate(tryS.rot * Math.PI / 180); ctx.strokeRect(-dw / 2, -dh / 2, dw, dh); ctx.restore();
+  }
+}
+const dragState = { active: false, dx: 0, dy: 0 };
+function stagePt(ev) { const r = cvT.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height]; }
+tStage.addEventListener("pointerdown", (ev) => {
+  if (!tryS.prodCut) return;
+  const [u, v] = stagePt(ev); dragState.active = true; dragState.dx = tryS.cx - u; dragState.dy = tryS.cy - v;
+  // 소품 바깥을 누르면 그 자리로 바로 옮김
+  const p = state.photos[tryS.sel], halfW = tryS.scale / 2, halfH = halfW * (tryS.prodCut.height / tryS.prodCut.width) * (p.w / p.h);
+  if (Math.abs(u - tryS.cx) > halfW || Math.abs(v - tryS.cy) > halfH) { dragState.dx = 0; dragState.dy = 0; tryS.cx = u; tryS.cy = v; }
+  tStage.setPointerCapture(ev.pointerId); tStage.classList.add("dragging"); renderTry();
+});
+tStage.addEventListener("pointermove", (ev) => { if (!dragState.active) return; const [u, v] = stagePt(ev); tryS.cx = clamp(u + dragState.dx, 0, 1); tryS.cy = clamp(v + dragState.dy, 0, 1); renderTry(); });
+const endDrag = () => { if (!dragState.active) return; dragState.active = false; tStage.classList.remove("dragging"); renderTry(); clearEval(true); };
+tStage.addEventListener("pointerup", endDrag); tStage.addEventListener("pointercancel", endDrag);
+tStage.addEventListener("wheel", (ev) => { if (!tryS.prodCut || !ev.altKey && !ev.ctrlKey) return; ev.preventDefault(); setRange("tScale", clamp(Math.round(tryS.scale * 100 - Math.sign(ev.deltaY)), 2, 80)); }, { passive: false });
+
+function bindRange(id, fmt, apply) {
+  const i = $("#" + id), o = $("#" + id + "O");
+  i.addEventListener("input", () => { o.textContent = fmt(+i.value); apply(+i.value); });
+}
+function setRange(id, v) { const i = $("#" + id); i.value = v; i.dispatchEvent(new Event("input")); }
+bindRange("bgTol", v => v, v => { tryS.tol = v; updateCut(); renderTry(); });
+bindRange("tScale", v => v + "%", v => { tryS.scale = v / 100; renderTry(); });
+bindRange("tRot", v => v + "°", v => { tryS.rot = v; renderTry(); });
+bindRange("tBright", v => v, v => { tryS.bright = v / 100; renderTry(); });
+bindRange("tShadow", v => v, v => { tryS.shadow = v / 100; renderTry(); });
+$("#prodName").addEventListener("input", (e) => { tryS.name = e.target.value; });
+
+$("#saveTry").addEventListener("click", () => { renderTry(true); saveCanvas(cvT, "소품-미리보기.jpg"); });
+
+function clearEval(soft = false) {
+  if (soft && $("#evalOut").childElementCount) { $("#evalOut").style.opacity = ".5"; return; }
+  $("#evalOut").replaceChildren(); $("#evalOut").style.opacity = "";
+}
+async function tryNeedsClaude() {
+  const sample = await getSample();
+  if (!sample) { showStatus("#tryStatus", "이 화면에서는 Claude에 연결할 수 없어요. claude.ai에서 열어 주세요.", "err"); return null; }
+  let lim = null; try { lim = await sample.limits(); } catch {}
+  if (!lim?.images) { showStatus("#tryStatus", "이 화면에서는 사진을 Claude에게 보낼 수 없어요. claude.ai에서 열어 주세요.", "err"); return null; }
+  return sample;
+}
+function prodBlob() {
+  // 투명 배경을 흰색 위에 그려서 보냄
+  const c = tryS.prodCut, o = document.createElement("canvas"); o.width = c.width; o.height = c.height;
+  const x = o.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, o.width, o.height); x.drawImage(c, 0, 0);
+  return canvasBlob(o, 800);
+}
+$("#autoPlace").addEventListener("click", async () => {
+  if (!tryS.prodCut) { $("#prodIn").click(); return; }
+  const sample = await tryNeedsClaude(); if (!sample) return;
+  const btn = $("#autoPlace"); btn.disabled = true;
+  showStatus("#tryStatus", "어디에 두면 좋을지 보는 중이에요…", "busy");
+  try {
+    const p = state.photos[tryS.sel];
+    const res = await sample.json(`첫 번째 이미지는 거실 사진, 두 번째 이미지는 사려는 소품(${tryS.name || "이름 없음"})입니다.
+이 소품을 이 사진 속에서 가장 잘 어울리고 현실적으로 놓을 수 있는 자리 한 곳을 고르세요. 벽에 거는 물건이면 빈 벽, 바닥에 두는 물건이면 바닥, 작은 물건이면 수납장이나 테이블 위.
+크기는 주변 가구와 비교해 실제 크기에 맞게 정합니다.${tryS.name ? " 이름에 크기가 있으면 그 크기를 따릅니다." : ""}
+좌표는 거실 사진 가로·세로를 1로 둔 비율입니다.
+JSON 하나만 출력: {"cx":소품 중심 x, "cy":소품 중심 y, "width":소품 가로 폭(사진 가로 대비 비율), "rotation":각도(도, 보통 0), "reason":"한국어 한 문장"}`,
+      { images: [await canvasBlob(p.img, 1400), await prodBlob()], modelTier: "default" });
+    tryS.cx = clamp(+res.cx || .5, 0, 1); tryS.cy = clamp(+res.cy || .4, 0, 1);
+    setRange("tScale", clamp(Math.round((+res.width || .14) * 100), 2, 80));
+    setRange("tRot", clamp(Math.round(+res.rotation || 0), -45, 45));
+    showStatus("#tryStatus", res.reason ? "추천 자리: " + res.reason : "추천 자리에 놓았어요.");
+    clearEval(); renderTry();
+  } catch (e) { showStatus("#tryStatus", errCopy(e), "err"); }
+  finally { btn.disabled = false; }
+});
+$("#evalBtn").addEventListener("click", async () => {
+  if (!tryS.prodCut) { $("#prodIn").click(); return; }
+  const sample = await tryNeedsClaude(); if (!sample) return;
+  const btn = $("#evalBtn"); btn.disabled = true;
+  showStatus("#tryStatus", "어울리는지 살펴보는 중이에요…", "busy");
+  try {
+    renderTry(true);
+    const comp = await canvasBlob(cvT, 1400);
+    const res = await sample.json(`당신은 홈스타일링 전문가입니다. 첫 번째 이미지는 사용자의 거실 사진 위에 사려는 소품을 합성한 것이고, 두 번째 이미지는 그 소품만 따로 찍은 상품 사진입니다.
+소품 정보: ${tryS.name || "정보 없음"}
+합성이 어설픈 점(그림자, 원근)은 평가에서 빼고, 이 소품이 이 공간의 색, 재질, 스타일, 크기와 어울리는지만 판단하세요.
+JSON 하나만 출력:
+{"score":0~100 정수, "verdict":"한 줄 결론", "good":["어울리는 점"], "concerns":["걸리는 점"], "tips":["더 잘 어울리게 하는 방법(위치, 크기, 색 대안 등)"], "alternative":"이 공간에 더 맞을 비슷한 상품의 특징 한 문장"}
+모든 문장은 한국어로 짧고 구체적으로.`,
+      { images: [comp, await prodBlob()], modelTier: "default" });
+    renderEval(res);
+    showStatus("#tryStatus", "");
+  } catch (e) { showStatus("#tryStatus", errCopy(e), "err"); }
+  finally { btn.disabled = false; renderTry(); }
+});
+function renderEval(r, isSample = false) {
+  const sc = clamp(Math.round(+r.score || 0), 0, 100);
+  const list = (t, a) => Array.isArray(a) && a.length ? [el("h3", {}, t), el("ul", { class: "eval-list" }, a.map(x => el("li", {}, String(x))))] : [];
+  const out = $("#evalOut"); out.style.opacity = "";
+  out.replaceChildren(
+    isSample ? el("span", { class: "sample-flag" }, "예시 소품으로 미리 평가한 결과") : null,
+    el("div", { class: "score", style: "margin-top:6px" },
+      el("div", { class: "ring", style: `--p:${sc}` }, el("span", {}, sc)),
+      el("p", { style: "font-weight:600" }, String(r.verdict || ""))),
+    ...list("어울리는 점", r.good), ...list("걸리는 점", r.concerns), ...list("이렇게 해 보세요", r.tips),
+    r.alternative ? el("p", { class: "note", style: "margin-top:8px" }, "대안: " + r.alternative) : null,
+  );
+}
+
+/* ───────── 시작 ───────── */
+(async function boot() {
+  if (SAMPLE) {
+    state.photos = await Promise.all(SAMPLE.photos.map(async (src, i) => { const img = await loadImg(src); return { name: `사진 ${i + 1}`, src, img, w: img.naturalWidth, h: img.naturalHeight }; }));
+    state.analysis = normalizeAnalysis(SAMPLE.analysis);
+    state.fromSample = true;
+    if (SAMPLE.options) {
+      state.styles = new Set(SAMPLE.options.styles); chipGroup($("#styleChips"), STYLES, state.styles);
+      state.conds = new Set(SAMPLE.options.conds); chipGroup($("#condChips"), CONDS, state.conds);
+      $("#budget").value = String(SAMPLE.options.budget);
+    }
+    if (SAMPLE.tryon) {
+      const t = SAMPLE.tryon;
+      tryS.sel = t.photo; tryS.cx = t.cx; tryS.cy = t.cy;
+      tryS.prod = await loadImg(t.product); updateCut();
+      $("#prodName").value = tryS.name = t.name;
+      setRange("tScale", Math.round(t.width * 100));
+      renderEval(t.eval, true);
+    }
+  }
+  renderThumbs(); renderViewer(); renderResult();
+  let tab = "plan"; try { tab = localStorage.getItem("mood-tab") || "plan"; } catch {}
+  if (location.hash === "#try") tab = "try";
+  setTab(tab);
+  if (!state.photos.length) showStatus("#analyzeStatus", "거실 사진을 올리면 시작해요. 사진을 이 페이지에 끌어다 놓아도 돼요.");
+  const dl = await getDownloads();
+  if (!dl) { $("#saveAfter").remove(); $("#saveTry").remove(); }
+})();
+</script>
