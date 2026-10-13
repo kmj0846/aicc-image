@@ -99,6 +99,16 @@
   form.add { display: flex; gap: 8px; flex-wrap: wrap; }
   form.add input { flex: 1 1 180px; }
 
+  /* 숙소 */
+  .stay { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+  .stay .addr { overflow-wrap: anywhere; }
+  .stay .memo { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+  a.btn { text-decoration: none; }
+  .places { display: grid; gap: 8px; }
+  .place { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 4px; min-width: 0; }
+  .place .tags { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .place .tags span { background: var(--bg); border-radius: 99px; padding: 1px 8px; }
+
   /* 사진 */
   .day-head { display: flex; align-items: baseline; gap: 8px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
@@ -288,9 +298,10 @@ function viewTrip() {
     <div class="tabs" role="tablist">
       ${tabBtn("info", "도시 정보")}
       ${tabBtn("pack", `준비물 ${packing.length ? `${done}/${packing.length}` : ""}`)}
+      ${tabBtn("stay", `숙소 ${(t.stays || []).length || ""}`)}
       ${tabBtn("photos", `사진 ${photosOf(t.id).length || ""}`)}
     </div>
-    ${tab === "pack" ? viewPacking(t) : tab === "photos" ? viewPhotos(t) : viewInfo(t)}
+    ${tab === "pack" ? viewPacking(t) : tab === "stay" ? viewStays(t) : tab === "photos" ? viewPhotos(t) : viewInfo(t)}
     <div class="row" style="justify-content:flex-end">
       ${ui.confirm === "trip:" + t.id
         ? `<span class="small muted">정말 지울까요?</span><button class="danger" data-act="del-trip-yes">여행 지우기</button><button data-act="cancel">취소</button>`
@@ -314,6 +325,56 @@ function viewInfo(t) {
     ${i.cautions?.length ? `<h3>주의할 점</h3><ul class="dots">${i.cautions.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
     <p class="small muted">Claude가 정리한 정보라 틀리거나 바뀐 내용이 있을 수 있어요. 비자, 입국 규정, 환율은 출발 전에 공식 안내를 한 번 더 확인하세요.</p>
     ${sample ? `<div><button data-act="gen">정보 다시 받기</button></div>` : ""}
+  </div>`;
+}
+
+const mapUrl = q => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+
+function viewStays(t) {
+  const stays = (t.stays || []).slice().sort((a, b) => (a.checkin || "").localeCompare(b.checkin || ""));
+  const card = st => {
+    const where = st.address || `${st.name} ${t.city}`;
+    const food = st.food || [];
+    return `<article class="stay">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div class="stack" style="gap:2px;min-width:0"><h2>${esc(st.name)}</h2>
+          ${st.checkin ? `<span class="muted small">체크인 ${fmtDate(st.checkin)}${st.checkout ? ` → 체크아웃 ${fmtDate(st.checkout)}` : ""}</span>` : ""}</div>
+        ${ui.confirm === "stay:" + st.id
+          ? `<div class="row"><button class="danger" data-act="stay-del-yes" data-id="${st.id}">지우기</button><button data-act="cancel">취소</button></div>`
+          : `<button class="ghost small" data-act="stay-del" data-id="${st.id}">지우기</button>`}
+      </div>
+      ${st.address ? `<p class="addr">${esc(st.address)}</p>` : ""}
+      ${st.memo ? `<p class="memo">${esc(st.memo)}</p>` : ""}
+      <div class="row"><a class="btn" href="${mapUrl(where)}" target="_blank" rel="noopener">구글맵에서 위치 보기</a>
+        <a class="btn" href="${mapUrl("restaurants near " + where)}" target="_blank" rel="noopener">구글맵에서 근처 식당 전체 보기</a></div>
+      <div class="stack" style="gap:8px">
+        <div class="row" style="justify-content:space-between"><h3>근처 맛집</h3>
+          ${sample && ui.busy !== "food:" + st.id ? `<button data-act="food" data-id="${st.id}">${food.length ? "다시 추천받기" : "Claude에게 추천받기"}</button>` : ""}</div>
+        ${ui.busy === "food:" + st.id ? `<div class="thinking"><span class="spin"></span>숙소 근처 맛집을 찾고 있어요. 30초쯤 걸려요.</div>`
+          : food.length ? `<div class="places">${food.map(f => `<div class="place">
+              <b>${esc(f.name)}</b>
+              <div class="tags">${[f.kind, f.distance, f.price, f.kids].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join("")}</div>
+              ${f.why ? `<p class="small">${esc(f.why)}</p>` : ""}
+              <div><a class="btn small" href="${mapUrl(f.name + " " + (st.address || t.city))}" target="_blank" rel="noopener">구글맵에서 평점 보기</a></div>
+            </div>`).join("")}</div>
+            <p class="muted small">Claude가 평점 높기로 알려진 곳을 고른 거예요. 지금 평점과 영업 여부는 구글맵 버튼으로 꼭 확인하세요.</p>`
+          : `<p class="muted small">${sample ? "숙소 근처에서 가족이 가기 좋은 식당을 추천받아 보세요." : "구글맵 버튼으로 근처 식당을 찾아보세요."}</p>`}
+      </div>
+    </article>`;
+  };
+  return `<div class="stack">
+    ${stays.length ? stays.map(card).join("") : `<p class="muted">숙소를 등록하면 위치를 구글맵으로 바로 열고, 근처 맛집도 추천받을 수 있어요.</p>`}
+    <form class="stay stack" data-form="stay">
+      <h3>숙소 추가</h3>
+      <label>숙소 이름<input id="s-name" required maxlength="60" placeholder="예: 힐튼 후쿠오카 씨호크"></label>
+      <label>주소 (모르면 비워 두세요)<input id="s-addr" maxlength="120" placeholder="예: 2-2-3 Jigyohama, Chuo Ward, Fukuoka"></label>
+      <div class="row">
+        <label style="flex:1 1 140px">체크인<input id="s-in" type="date" value="${t.start}"></label>
+        <label style="flex:1 1 140px">체크아웃<input id="s-out" type="date" value="${t.end}"></label>
+      </div>
+      <label>메모 (예약번호, 체크인 시간, 연락처 등)<textarea id="s-memo" rows="2" maxlength="300"></textarea></label>
+      <div><button class="primary" type="submit">숙소 추가</button></div>
+    </form>
   </div>`;
 }
 
@@ -532,6 +593,33 @@ ${kids ? "" : "아이가 없으니 \"아이 용품\" 묶음은 빼. "}국내 여
   ui.busy = null; render();
 }
 
+async function updateStays(t, fn) {
+  const stays = fn((trips.find(x => x.id === t.id)?.stays || []).map(x => ({ ...x })));
+  await guard(() => db.doc("trips/" + t.id).update({ stays }));
+}
+
+async function recommendFood(t, st) {
+  if (!sample) return;
+  ui.busy = "food:" + st.id; render();
+  const prompt = `${t.city} 여행 중 머무는 숙소 근처에서 가족이 가기 좋은 식당 6~8곳을 추천해줘.
+숙소: ${st.name}
+주소: ${st.address || "모름 (숙소 이름으로 위치를 추정해줘)"}
+함께 가는 사람: ${t.who || "가족"}
+여행 메모: ${t.note || "없음"}
+조건: 구글맵 평점이 높고 리뷰가 많은 곳으로 알려진, 실제로 있는 가게만. 숙소에서 걸어서 또는 짧게 이동할 수 있는 곳 위주로. 현지 대표 음식과 아이와 먹기 편한 곳을 섞어줘. 확실하지 않은 가게는 빼.
+JSON만 답해. 형식:
+{"places":[{"name":"구글맵에서 검색되는 가게 이름 (현지어가 있으면 한국어와 함께)","kind":"음식 종류","why":"추천 이유 한 문장","distance":"숙소에서 대략 거리나 이동 시간","price":"1인 대략 가격","kids":"아이와 가기 어떤지 짧게"}]}`;
+  try {
+    const r = await sample.json(prompt);
+    const S = v => typeof v === "string" ? v.slice(0, 200) : "";
+    const food = (r.places || []).map(p => ({ name: S(p.name), kind: S(p.kind), why: S(p.why), distance: S(p.distance), price: S(p.price), kids: S(p.kids) })).filter(p => p.name).slice(0, 10);
+    await updateStays(t, ss => ss.map(x => x.id === st.id ? { ...x, food, foodAt: Date.now() } : x));
+  } catch (e) {
+    toast(e?.code === "not_granted" ? "Claude 사용을 허락해야 추천받을 수 있어요." : "추천을 받지 못했어요. 다시 시도해 주세요.");
+  }
+  ui.busy = null; render();
+}
+
 async function updatePacking(t, fn) {
   const packing = fn((t.packing || []).map(p => ({ ...p })));
   await guard(() => db.doc("trips/" + t.id).update({ packing }));
@@ -630,6 +718,9 @@ document.addEventListener("click", async e => {
       if (photosOf(t.id).length) { ui.confirm = null; toast("사진이 있는 여행은 지울 수 없어요. 사진을 먼저 지워 주세요."); return; }
       await guard(() => db.doc("trips/" + t.id).delete());
       view = { name: "home" }; ui.confirm = null; break;
+    case "stay-del": ui.confirm = "stay:" + id; break;
+    case "stay-del-yes": ui.confirm = null; if (t) updateStays(t, ss => ss.filter(x => x.id !== id)); break;
+    case "food": { const st = (t?.stays || []).find(x => x.id === id); if (st) recommendFood(t, st); return; }
     case "pack-del": e.preventDefault(); if (t) updatePacking(t, ps => ps.filter(p => p.id !== id)); return;
     case "lb": ui.lightbox = { list: el.dataset.list.split(","), i: el.dataset.list.split(",").indexOf(id) }; ui.confirm = null; loadName(); break;
     case "lb-close": ui.lightbox = null; ui.confirm = null; break;
@@ -689,6 +780,13 @@ document.addEventListener("submit", async e => {
       const wait = () => { const tr = trips.find(x => x.id === ref.id); if (tr) generateInfo(tr); else if (tries++ < 50) setTimeout(wait, 200); };
       if (sample && !past) wait();
     });
+  }
+  if (form === "stay") {
+    const t = trips.find(x => x.id === view.id), name = $("#s-name").value.trim();
+    if (!t || !name) return;
+    const st = { id: rid(), name, address: $("#s-addr").value.trim(), checkin: $("#s-in").value, checkout: $("#s-out").value, memo: $("#s-memo").value.trim() };
+    ["s-name", "s-addr", "s-memo"].forEach(k => { $("#" + k).value = ""; });
+    updateStays(t, ss => [...ss, st]);
   }
   if (form === "pack") {
     const t = trips.find(x => x.id === view.id), text = $("#p-text").value.trim();
