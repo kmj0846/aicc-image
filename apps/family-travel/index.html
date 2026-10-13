@@ -108,6 +108,23 @@
   .upload { position: relative; overflow: hidden; }
   .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
+  /* 달력 */
+  .cal-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cal-nav select { padding: 8px 10px; }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .cal .wd { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .cal .wd:first-child, .cal .sun .num { color: var(--danger); }
+  .cell { min-height: 58px; padding: 4px; border-radius: 8px; border: 1px solid transparent; background: var(--surface); display: flex; flex-direction: column; align-items: stretch; gap: 2px; text-align: left; font-weight: 400; min-width: 0; }
+  .cell.out { visibility: hidden; }
+  .cell.today .num { background: var(--ink); color: var(--bg); border-radius: 99px; padding: 0 6px; }
+  .cell[aria-pressed="true"] { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .cell .num { font-size: 13px; align-self: flex-start; font-variant-numeric: tabular-nums; }
+  .chip { font-size: 10px; line-height: 1.5; padding: 0 4px; border-radius: 4px; background: var(--primary); color: var(--primary-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip.past { background: var(--line); color: var(--muted); }
+  .must { font-size: 11px; font-weight: 700; color: #2b2100; background: var(--sun); border-radius: 4px; padding: 0 5px; flex: none; }
+  .day-trip { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  .checks { display: grid; gap: 6px; }
+
   /* 앨범: 폴라로이드 벽 */
   .years { display: flex; gap: 6px; flex-wrap: wrap; }
   .years button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
@@ -122,6 +139,7 @@
 
   /* 크게 보기 */
   #overlay { position: fixed; inset: 0; background: var(--shade); z-index: 10; display: grid; grid-template-rows: 1fr auto; padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); }
+  #overlay[hidden], #toast[hidden] { display: none; }
   .lb-stage { display: grid; place-items: center; min-height: 0; padding: 12px; }
   .lb-stage img, .lb-stage video { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
   .lb-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; padding: 12px 16px 18px; color: #f2f5f8; }
@@ -182,7 +200,7 @@ function render() {
   const active = document.activeElement?.id;
   const sel = active && document.activeElement.selectionStart != null ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
 
-  $("#app").innerHTML = view.name === "trip" ? viewTrip() : view.name === "new" ? viewNew() : view.name === "album" ? viewAlbum() : viewHome();
+  $("#app").innerHTML = view.name === "trip" ? viewTrip() : view.name === "new" ? viewNew() : view.name === "album" ? viewAlbum() : view.name === "cal" ? viewCal() : viewHome();
   $("#overlay").hidden = !ui.lightbox;
   $("#overlay").innerHTML = ui.lightbox ? viewLightbox() : "";
   $("#toast").hidden = !ui.toast;
@@ -227,6 +245,7 @@ function viewHome() {
     <div class="top">
       <div><span class="eyebrow">FAMILY TRAVEL ALBUM</span><h1>호유네 가족 여행</h1></div>
       <div class="row">
+        ${noStore ? "" : `<button data-act="cal">달력</button>`}
         ${years.length ? `<button data-act="album" data-year="${years[0]}">연도별 앨범</button>` : ""}
         ${noStore || !sorted.length ? "" : `<button class="primary" data-act="new">새 여행</button>`}
       </div>
@@ -237,12 +256,12 @@ function viewHome() {
 
 function viewNew() {
   return `
-    <button class="back" data-act="home">← 여행 목록</button>
+    <button class="back" data-act="${view.from === "cal" ? "cal" : "home"}">← ${view.from === "cal" ? "달력" : "여행 목록"}</button>
     <h1>새 여행</h1>
     <form class="stack" data-form="new">
       <label>어디로 가나요?<input id="f-city" required maxlength="40" placeholder="예: 일본 후쿠오카, 제주도"></label>
       <div class="row">
-        <label style="flex:1 1 140px">출발일<input id="f-start" type="date" required></label>
+        <label style="flex:1 1 140px">출발일<input id="f-start" type="date" required value="${view.start || ""}"></label>
         <label style="flex:1 1 140px">돌아오는 날<input id="f-end" type="date" required></label>
       </div>
       <label>누가 함께 가나요?<input id="f-who" maxlength="80" placeholder="예: 어른 2명, 아이 1명 (6살)"></label>
@@ -255,12 +274,13 @@ function viewNew() {
 function viewTrip() {
   const t = trips.find(x => x.id === view.id);
   if (!t) return `<button class="back" data-act="home">← 여행 목록</button><p class="muted">여행을 찾을 수 없어요.</p>`;
+  const backBtn = view.back ? `<button class="back" data-act="cal-back">← 달력</button>` : `<button class="back" data-act="home">← 여행 목록</button>`;
   const tab = view.tab;
   const tabBtn = (k, label) => `<button role="tab" aria-selected="${tab === k}" data-act="tab" data-tab="${k}">${label}</button>`;
   const packing = t.packing || [];
   const done = packing.filter(p => p.done).length;
   return `
-    <button class="back" data-act="home">← 여행 목록</button>
+    ${backBtn}
     <div class="top">
       <div class="stack" style="gap:4px">${tripBadge(t)}<h1>${esc(t.city)}</h1>
         <span class="muted">${fmtRange(t)} · ${nightsOf(t)}박 ${nightsOf(t) + 1}일${t.who ? " · " + esc(t.who) : ""}</span></div>
@@ -310,7 +330,7 @@ function viewPacking(t) {
     ${cats.map(c => `<div class="group"><h3>${esc(c)}</h3>
       ${items.filter(p => p.cat === c).map(p => `<label class="item${p.done ? " done" : ""}">
         <input type="checkbox" data-act="pack" data-id="${p.id}" ${p.done ? "checked" : ""}>
-        <span>${esc(p.text)}</span>
+        <span>${esc(p.text)}</span>${p.must ? `<span class="must">필수</span>` : ""}
         <button type="button" class="ghost" data-act="pack-del" data-id="${p.id}" aria-label="${esc(p.text)} 지우기">✕</button>
       </label>`).join("")}</div>`).join("")}
     <form class="add" data-form="pack">
@@ -355,6 +375,62 @@ function viewPhotos(t) {
         ${p.fav ? `<span class="star">★</span>` : ""}</button>`).join("")}</div>
     </section>`).join("")}
   </div>`;
+}
+
+// 꼭 챙길 것: Claude가 필수로 고른 항목, 없으면 서류·돈 묶음
+const mustOf = t => { const ps = t.packing || []; const m = ps.filter(p => p.must); return m.length ? m : ps.filter(p => /서류|돈/.test(p.cat)); };
+
+function viewCal() {
+  const { y, m } = view; // m: 0~11
+  const today = keyOf(new Date());
+  const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate();
+  const allYears = [...new Set([new Date().getFullYear(), y, ...trips.map(t => +t.start.slice(0, 4)), ...trips.map(t => +t.end.slice(0, 4))])];
+  const yMin = Math.min(...allYears) - 1, yMax = Math.max(...allYears) + 2;
+  const tripsOn = k => trips.filter(t => t.start <= k && k <= t.end).sort((a, b) => a.start.localeCompare(b.start));
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push(`<span class="cell out"></span>`);
+  for (let d = 1; d <= days; d++) {
+    const k = keyOf(new Date(y, m, d)), ts = tripsOn(k);
+    cells.push(`<button class="cell${k === today ? " today" : ""}${(first.getDay() + d - 1) % 7 === 0 ? " sun" : ""}" data-act="cal-day" data-k="${k}" aria-pressed="${view.sel === k}" aria-label="${m + 1}월 ${d}일${ts.length ? ", " + ts.map(t => esc(t.city)).join(", ") : ""}">
+      <span class="num">${d}</span>${ts.map(t => `<span class="chip${t.end < today ? " past" : ""}">${t.start === k || d === 1 ? esc(t.city) : "&nbsp;"}</span>`).join("")}</button>`);
+  }
+  const monthKey = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const sel = view.sel;
+  const shown = sel ? tripsOn(sel) : trips.filter(t => t.start.slice(0, 7) <= monthKey && monthKey <= t.end.slice(0, 7)).sort((a, b) => a.start.localeCompare(b.start));
+  const card = t => {
+    const ps = t.packing || [], must = mustOf(t), done = ps.filter(p => p.done).length;
+    return `<div class="day-trip">
+      <div class="row" style="justify-content:space-between">${tripBadge(t)}<span class="muted small">${fmtRange(t)}</span></div>
+      <h2>${esc(t.city)}</h2>
+      ${t.end < today ? `<p class="muted small">다녀온 여행이에요.</p>`
+        : ps.length ? `<div class="stack" style="gap:6px"><b>꼭 챙길 것</b><div class="checks">${must.map(p => `<label class="item${p.done ? " done" : ""}">
+            <input type="checkbox" data-act="pack" data-trip="${t.id}" data-id="${p.id}" ${p.done ? "checked" : ""}><span>${esc(p.text)}</span></label>`).join("")}</div>
+            <span class="muted small">전체 준비물 ${done}/${ps.length} 챙김</span></div>`
+        : ui.busy === t.id ? `<div class="thinking"><span class="spin"></span>준비물을 정리하는 중…</div>`
+        : `<p class="muted small">아직 준비물 목록이 없어요.</p>`}
+      <div class="row">
+        <button class="primary" data-act="open" data-id="${t.id}" data-tab="pack">준비물 전체 보기</button>
+        <button data-act="open" data-id="${t.id}" data-tab="info">도시 정보</button>
+        <button data-act="open" data-id="${t.id}" data-tab="photos">사진</button>
+      </div>
+    </div>`;
+  };
+  const opts = (from, to, cur, fmt) => Array.from({ length: to - from + 1 }, (_, i) => from + i).map(v => `<option value="${v}" ${v === cur ? "selected" : ""}>${fmt(v)}</option>`).join("");
+  return `
+    <button class="back" data-act="home">← 여행 목록</button>
+    <div class="top"><div><span class="eyebrow">CALENDAR</span><h1>여행 달력</h1></div></div>
+    <div class="cal-nav">
+      <button data-act="cal-move" data-d="-1" aria-label="이전 달">‹</button>
+      <select id="cal-y" data-act="cal-pick" aria-label="연도">${opts(yMin, yMax, y, v => v + "년")}</select>
+      <select id="cal-m" data-act="cal-pick" aria-label="월">${opts(1, 12, m + 1, v => v + "월")}</select>
+      <button data-act="cal-move" data-d="1" aria-label="다음 달">›</button>
+      <button class="ghost" data-act="cal-today">오늘</button>
+    </div>
+    <div class="cal">${WEEK.map(w => `<span class="wd">${w}</span>`).join("")}${cells.join("")}</div>
+    <h3>${sel ? `${+sel.slice(5, 7)}월 ${+sel.slice(8)}일` : `${m + 1}월의 여행`}</h3>
+    ${shown.length ? `<div class="stack">${shown.map(card).join("")}</div>`
+      : `<div class="empty"><p>${sel ? "이 날은 잡힌 여행이 없어요." : "이 달에는 여행이 없어요."}</p>
+         <button class="primary" data-act="new" data-start="${sel || ""}">${sel ? `${+sel.slice(5, 7)}월 ${+sel.slice(8)}일 출발 여행 만들기` : "새 여행 만들기"}</button></div>`}`;
 }
 
 function viewAlbum() {
@@ -431,7 +507,7 @@ async function generateInfo(t) {
 여행 스타일/메모: ${t.note || "없음"}
 한국에서 출발하는 한국인 가족 기준으로 써줘. 그 시기 날씨에 맞춘 옷차림을 알려주고, 준비물은 이 도시와 계절, 일정 길이에 맞게 구체적으로 써줘.
 JSON만 답해. 형식:
-{"summary":"도시 소개 2~3문장","weather":"그 시기 날씨와 기온","clothes":"옷차림 조언 한 문장","currency":"통화, 대략의 환율, 결제 팁","plug":"전압과 플러그 모양, 어댑터 필요 여부","language":"언어와 간단한 인사말","timeDiff":"한국과의 시차","transport":"공항에서 시내 이동과 시내 교통","entry":"한국 여권 기준 입국 요건","tips":["가족 여행 팁 3~5개"],"cautions":["주의할 점 2~4개"],"packing":[{"cat":"서류·돈","items":["여권"]},{"cat":"옷","items":[]},{"cat":"세면·건강","items":[]},{"cat":"전자기기","items":[]},{"cat":"아이 용품","items":[]},{"cat":"기타","items":[]}]}
+{"summary":"도시 소개 2~3문장","weather":"그 시기 날씨와 기온","clothes":"옷차림 조언 한 문장","currency":"통화, 대략의 환율, 결제 팁","plug":"전압과 플러그 모양, 어댑터 필요 여부","language":"언어와 간단한 인사말","timeDiff":"한국과의 시차","transport":"공항에서 시내 이동과 시내 교통","entry":"한국 여권 기준 입국 요건","tips":["가족 여행 팁 3~5개"],"cautions":["주의할 점 2~4개"],"packing":[{"cat":"서류·돈","items":["여권"]},{"cat":"옷","items":[]},{"cat":"세면·건강","items":[]},{"cat":"전자기기","items":[]},{"cat":"아이 용품","items":[]},{"cat":"기타","items":[]}],"must":["packing에 있는 항목 중 빠뜨리면 여행이 곤란해지는 꼭 챙길 것 5~8개, packing에 쓴 글자 그대로"]}
 ${kids ? "" : "아이가 없으니 \"아이 용품\" 묶음은 빼. "}국내 여행이면 currency, plug, timeDiff, entry는 "해당 없음"으로 써.`;
   try {
     const r = await sample.json(prompt);
@@ -445,7 +521,8 @@ ${kids ? "" : "아이가 없으니 \"아이 용품\" 묶음은 빼. "}국내 여
     // 다시 받을 때도 직접 추가한 항목과 이미 체크한 항목은 그대로 둠
     const old = trips.find(x => x.id === t.id)?.packing || [];
     const doneTexts = new Set(old.filter(p => p.done).map(p => p.text));
-    const fresh = (r.packing || []).flatMap(g => (g.items || []).map(x => ({ id: rid(), cat: S(g.cat) || "기타", text: S(x), done: doneTexts.has(S(x)) }))).filter(p => p.text);
+    const must = new Set((r.must || []).map(S));
+    const fresh = (r.packing || []).flatMap(g => (g.items || []).map(x => ({ id: rid(), cat: S(g.cat) || "기타", text: S(x), done: doneTexts.has(S(x)), must: must.has(S(x)) }))).filter(p => p.text);
     const freshTexts = new Set(fresh.map(p => p.text));
     const packing = [...fresh, ...old.filter(p => p.custom && !freshTexts.has(p.text))];
     await db.doc("trips/" + t.id).update({ info, packing });
@@ -533,10 +610,16 @@ document.addEventListener("click", async e => {
   if (act === "lb-close" && e.target !== el && el.classList.contains("lb-stage")) return; // 사진 자체를 누르면 닫지 않음
   switch (act) {
     case "home": view = { name: "home" }; ui.confirm = null; break;
-    case "new": view = { name: "new" }; break;
+    case "new": view = { name: "new", start: el.dataset.start || "", from: view.name }; break;
+    case "cal": { const n = new Date(); view = { name: "cal", y: n.getFullYear(), m: n.getMonth(), sel: null }; break; }
+    case "cal-back": view = { name: "cal", ...view.back }; break;
+    case "cal-today": { const n = new Date(); Object.assign(view, { y: n.getFullYear(), m: n.getMonth(), sel: keyOf(n) }); break; }
+    case "cal-move": { const d = new Date(view.y, view.m + Number(el.dataset.d), 1); Object.assign(view, { y: d.getFullYear(), m: d.getMonth(), sel: null }); break; }
+    case "cal-day": view.sel = view.sel === el.dataset.k ? null : el.dataset.k; break;
     case "open": {
       const tr = trips.find(x => x.id === id);
-      view = { name: "trip", id, tab: tr && tr.end < keyOf(new Date()) ? "photos" : "info" }; ui.confirm = null; window.scrollTo(0, 0); break;
+      const back = view.name === "cal" ? { y: view.y, m: view.m, sel: view.sel } : null;
+      view = { name: "trip", id, back, tab: el.dataset.tab || (tr && tr.end < keyOf(new Date()) ? "photos" : "info") }; ui.confirm = null; window.scrollTo(0, 0); break;
     }
     case "tab": view.tab = el.dataset.tab; ui.confirm = null; break;
     case "album": view = { name: "album", year: el.dataset.year }; break;
@@ -583,7 +666,9 @@ document.addEventListener("click", async e => {
 document.addEventListener("change", e => {
   const el = e.target;
   const t = trips.find(x => x.id === view.id);
-  if (el.dataset.act === "pack" && t) updatePacking(t, ps => ps.map(p => p.id === el.dataset.id ? { ...p, done: el.checked } : p));
+  const pt = el.dataset.trip ? trips.find(x => x.id === el.dataset.trip) : t;
+  if (el.dataset.act === "pack" && pt) updatePacking(pt, ps => ps.map(p => p.id === el.dataset.id ? { ...p, done: el.checked } : p));
+  if (el.dataset.act === "cal-pick") { view.y = +$("#cal-y").value; view.m = +$("#cal-m").value - 1; view.sel = null; render(); }
   if (el.dataset.act === "upload" && t && el.files.length) { uploadFiles([...el.files], t.id); el.value = ""; }
 });
 
