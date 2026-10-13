@@ -1,4 +1,4 @@
-<title>우리 가족 여행</title>
+<title>호유네 가족 여행</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gothic+A1:wght@400;500;700&display=swap">
 <style>
@@ -225,7 +225,7 @@ function viewHome() {
 
   return `
     <div class="top">
-      <div><span class="eyebrow">FAMILY TRAVEL ALBUM</span><h1>우리 가족 여행</h1></div>
+      <div><span class="eyebrow">FAMILY TRAVEL ALBUM</span><h1>호유네 가족 여행</h1></div>
       <div class="row">
         ${years.length ? `<button data-act="album" data-year="${years[0]}">연도별 앨범</button>` : ""}
         ${noStore || !sorted.length ? "" : `<button class="primary" data-act="new">새 여행</button>`}
@@ -597,11 +597,12 @@ document.addEventListener("submit", async e => {
     await guard(async () => {
       const ref = await db.collection("trips").add({ city, start, end, who: $("#f-who").value.trim(), note: $("#f-note").value.trim(), packing: [], createdAt: Date.now(), by: me || null });
       ["f-city", "f-start", "f-end", "f-who", "f-note"].forEach(k => { const x = document.getElementById(k); if (x) x.value = ""; });
-      view = { name: "trip", id: ref.id, tab: "info" };
+      const past = end < keyOf(new Date());
+      view = { name: "trip", id: ref.id, tab: past ? "photos" : "info" };
       render();
       let tries = 0;
       const wait = () => { const tr = trips.find(x => x.id === ref.id); if (tr) generateInfo(tr); else if (tries++ < 50) setTimeout(wait, 200); };
-      if (sample) wait();
+      if (sample && !past) wait();
     });
   }
   if (form === "pack") {
