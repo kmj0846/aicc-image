@@ -131,9 +131,16 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
 .hoyu { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--r-lg);
   background: var(--wood); color: var(--paper); }
 .hoyu p { font-size: 14px; opacity: .92; }
-.hoyu .ph { aspect-ratio: 4 / 3; max-width: 100%; border-radius: var(--r-md); border: 1.5px dashed rgba(255, 252, 246, .55);
-  display: flex; align-items: center; justify-content: center; font-size: 13px; color: rgba(255, 252, 246, .8); overflow: hidden; }
-.hoyu .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hoyu.ref { background: var(--paper); color: var(--ink); border: 1px solid var(--line); }
+.hoyu.ref p { color: var(--ink-soft); opacity: 1; }
+.hoyu .ph { aspect-ratio: 4 / 3; max-width: 100%; border-radius: var(--r-md); border: 1.5px dashed currentColor;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .7; }
+.gallery { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -18px; padding: 0 18px 4px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.gallery::-webkit-scrollbar { display: none; }
+.gallery img { flex: none; width: 86%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-md); scroll-snap-align: center; display: block; }
+.gallery img:only-child { width: 100%; }
+.count { font-size: 12px; opacity: .8; font-variant-numeric: tabular-nums; }
 
 /* 저장 시트 */
 .sheet { position: fixed; inset: 0; z-index: 20; background: rgba(40, 30, 22, .55); display: flex; align-items: flex-end; justify-content: center; }
@@ -221,10 +228,10 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       <ul class="tags avoid" id="resAvoid"></ul>
     </div>
 
-    <div class="hoyu">
-      <h2>호유홈도 웜톤 집이에요</h2>
+    <div class="hoyu" id="refBox">
+      <h2 id="refTitle">호유홈도 웜톤 집이에요</h2>
       <p id="hoyuLine"></p>
-      <div class="ph" id="hoyuPhoto">호유홈 예시 사진 자리</div>
+      <div id="refPhotos"></div>
     </div>
 
     <div class="actions">
@@ -249,8 +256,8 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
 
 <script>
 (() => {
-  // 호유홈 예시 사진: 이미지 주소나 data URI를 넣으면 결과 화면 자리 표시가 사진으로 바뀌어요.
-  const HOYU_PHOTO = "";
+  // 결과별 참고 사진. build.py가 photos/warm, photos/cool, photos/neutral 폴더의 사진을 넣어요.
+  const PHOTOS = /*@PHOTOS@*/{ warm: [], cool: [], neutral: [] };
 
   const STEPS = [
     { key: "floor", label: "바닥", mark: "①", weight: 0.5, hint: "바닥재가 잘 보이는 곳을 눌러 주세요." },
@@ -265,7 +272,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       colors: [["크림 아이보리", "#EADBC4"], ["테라코타", "#C2704C"], ["올리브 그린", "#7E8354"]],
       materials: ["라탄·원목", "린넨·코튼", "브라스(황동)"],
       avoid: ["차가운 크롬·스틸 소품", "쨍한 블루 원색 소품"],
-      hoyu: "웜톤 집을 꾸미는 과정을 인스타에 기록하고 있어요."
+      refTitle: "호유홈도 웜톤 집이에요",
+      hoyu: "웜톤 집을 꾸미는 과정을 인스타에 기록하고 있어요.",
+      refAlt: "호유홈 웜톤 집"
     },
     cool: {
       name: "시크한 쿨톤 집",
@@ -273,7 +282,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       colors: [["블루 그레이", "#8A99A6"], ["차콜", "#3F4349"], ["실버 그레이", "#C6CACF"]],
       materials: ["스테인리스·크롬", "투명 유리", "화이트 대리석"],
       avoid: ["진한 오렌지·테라코타", "노란 기 강한 원목 소품"],
-      hoyu: "톤은 달라도 소품 고르는 기준은 같아요. 인스타에서 힌트를 얻어 보세요."
+      refTitle: "이런 쿨톤 집을 참고해 보세요",
+      hoyu: "그레이 패브릭과 블랙 금속, 흰 벽이 중심이에요. 소품도 무채색 안에서 골라 보세요.",
+      refAlt: "쿨톤 집 참고 사진"
     },
     neutral: {
       name: "차분한 뉴트럴 집",
@@ -281,7 +292,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       colors: [["그레이지", "#B5AC9F"], ["오트밀", "#DCD2C2"], ["세이지 그린", "#9AA58A"]],
       materials: ["부클레 패브릭", "라이트 오크", "무광 세라믹"],
       avoid: ["채도 높은 원색 소품", "광택이 강한 소재"],
-      hoyu: "뉴트럴 집은 웜톤 소품을 한두 개 섞으면 한결 포근해져요."
+      refTitle: "이런 뉴트럴 집을 참고해 보세요",
+      hoyu: "베이지와 그레이를 섞고, 원목이나 패브릭 소재로 온기를 더했어요.",
+      refAlt: "뉴트럴 집 참고 사진"
     }
   };
 
@@ -504,8 +517,15 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     ).join("");
     $("resMaterials").innerHTML = R.materials.map((m) => "<li>" + m + "</li>").join("");
     $("resAvoid").innerHTML = R.avoid.map((m) => "<li>" + m + "</li>").join("");
+    $("refBox").classList.toggle("ref", type !== "warm");
+    $("refTitle").textContent = R.refTitle;
     $("hoyuLine").textContent = R.hoyu;
-    if (HOYU_PHOTO) $("hoyuPhoto").innerHTML = '<img src="' + HOYU_PHOTO + '" alt="호유홈 거실">';
+    const list = PHOTOS[type] || [];
+    $("refPhotos").innerHTML = list.length
+      ? '<div class="gallery">' + list.map((src, i) => '<img src="' + src + '" alt="' + R.refAlt + " " + (i + 1) + '" loading="lazy">').join("") + "</div>" +
+        (list.length > 1 ? '<p class="count">옆으로 넘겨서 ' + list.length + "장 보기</p>" : "")
+      : '<div class="ph">사진 준비 중</div>';
+    $("refPhotos").querySelector(".gallery")?.scrollTo(0, 0);
   }
 
   // ---------- 9:16 결과 카드 ----------
