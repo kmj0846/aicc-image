@@ -9,8 +9,9 @@
   --line: #E7DDCC;
   --ink: #3B3027;
   --ink-soft: #6F6256;
-  --wood: #9A6B45;
-  --wood-deep: #7A5233;
+  --butter: #F3E4A4;
+  --butter-deep: #E8D27A;
+  --honey: #876712;
   --sage: #8A9C80;
   --sage-deep: #5D7155;
   --sage-tint: #E9EEE3;
@@ -40,7 +41,7 @@ h1, h2, h3, p { margin: 0; }
 h1 { font-size: 28px; line-height: 1.35; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
 h2 { font-size: 21px; line-height: 1.4; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
 h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing: 0.02em; }
-.eyebrow { font-size: 13px; font-weight: 600; color: var(--wood); letter-spacing: 0.04em; }
+.eyebrow { font-size: 13px; font-weight: 600; color: var(--honey); letter-spacing: 0.04em; }
 .muted { color: var(--ink-soft); font-size: 14px; }
 
 /* 버튼 */
@@ -53,8 +54,8 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
 }
 .btn:active { transform: scale(0.98); }
 .btn:focus-visible, .slot:focus-visible, .link:focus-visible { outline: 3px solid var(--sage); outline-offset: 3px; }
-.btn-wood { background: var(--wood); color: var(--paper); }
-.btn-wood:hover { background: var(--wood-deep); }
+.btn-main { background: var(--butter); color: var(--ink); border-color: var(--butter-deep); }
+.btn-main:hover { background: var(--butter-deep); }
 .btn-sage { background: var(--sage-deep); color: var(--paper); }
 .btn-line { background: transparent; color: var(--sage-deep); border-color: var(--sage); }
 .btn[disabled] { background: var(--line); color: var(--ink-soft); cursor: not-allowed; transform: none; }
@@ -98,7 +99,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-md);
   font: 500 13px/1.3 var(--font); color: var(--ink); cursor: pointer; min-width: 0;
 }
-.slot.active { border-color: var(--wood); box-shadow: 0 0 0 3px rgba(154, 107, 69, .14); }
+.slot.active { border-color: var(--butter-deep); box-shadow: 0 0 0 3px rgba(232, 210, 122, .35); }
 .slot .dot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed var(--line); background: transparent; }
 .slot.done .dot { border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
 .slot .sub { font-size: 11px; color: var(--ink-soft); }
@@ -127,9 +128,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
 .tags { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
 .tags li { padding: 8px 14px; border-radius: 999px; font-size: 14px; background: var(--sage-tint); color: var(--sage-deep); font-weight: 500; }
 .tags.avoid li { background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
-.tags.avoid li::before { content: "× "; color: var(--wood); font-weight: 700; }
+.tags.avoid li::before { content: "× "; color: var(--honey); font-weight: 700; }
 .hoyu { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--r-lg);
-  background: var(--wood); color: var(--paper); }
+  background: var(--butter); color: var(--ink); }
 .hoyu p { font-size: 14px; opacity: .92; }
 .hoyu.ref { background: var(--paper); color: var(--ink); border: 1px solid var(--line); }
 .hoyu.ref p { color: var(--ink-soft); opacity: 1; }
@@ -172,7 +173,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       <li><b>3</b><span>어울리는 색과 소재를 확인해요</span></li>
     </ol>
     <div class="actions">
-      <label class="btn btn-wood" for="fileInput" tabindex="0" id="uploadBtn">사진 올리기</label>
+      <label class="btn btn-main" for="fileInput" tabindex="0" id="uploadBtn">사진 올리기</label>
       <input type="file" id="fileInput" accept="image/*" hidden>
       <button class="link" type="button" id="sampleBtn">예시 사진으로 먼저 해보기</button>
     </div>
@@ -195,7 +196,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     <div class="slots" id="slots"></div>
     <p class="tip">그림자나 조명 반사가 없는 곳을 누르면 더 정확해요. 노란 전구색 조명 아래에서 찍은 사진은 실제보다 따뜻하게 나올 수 있어요. 낮에 자연광으로 찍은 사진을 추천해요.</p>
     <div class="actions">
-      <button class="btn btn-wood" type="button" id="judgeBtn" disabled>세 곳을 모두 찍어 주세요</button>
+      <button class="btn btn-main" type="button" id="judgeBtn" disabled>세 곳을 모두 찍어 주세요</button>
       <button class="link" type="button" id="backBtn">다른 사진 고르기</button>
     </div>
   </section>
@@ -236,7 +237,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     </div>
 
     <div class="actions">
-      <a class="btn btn-wood" href="https://www.instagram.com/hoyuhome_102/" target="_blank" rel="noopener">인스타 @hoyuhome_102 팔로우</a>
+      <a class="btn btn-main" href="https://www.instagram.com/hoyuhome_102/" target="_blank" rel="noopener">인스타 @hoyuhome_102 팔로우</a>
       <button class="btn btn-sage" type="button" id="saveBtn">결과 이미지 저장</button>
       <button class="link" type="button" id="againBtn">다른 사진으로 다시 해보기</button>
     </div>
@@ -249,7 +250,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     <img id="cardImg" alt="우리집 톤 결과 카드">
     <p id="sheetMsg">이미지를 길게 눌러 사진에 저장하세요.</p>
     <div class="actions">
-      <button class="btn btn-wood" type="button" id="downloadBtn" hidden>파일로 저장</button>
+      <button class="btn btn-main" type="button" id="downloadBtn" hidden>파일로 저장</button>
       <button class="btn btn-line" type="button" id="sheetClose">닫기</button>
     </div>
   </div>
@@ -566,7 +567,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     const g = c.getContext("2d");
 
     g.fillStyle = "#F7F2E9"; g.fillRect(0, 0, W, H);
-    g.fillStyle = "#9A6B45"; g.font = "600 34px " + F;
+    g.fillStyle = "#876712"; g.font = "600 34px " + F;
     g.fillText("우리집 톤 찾기", M, 118);
 
     // 사진 (가운데 맞춰 자르기)
@@ -629,7 +630,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     g.fillStyle = "#6F6256"; g.font = "500 34px " + F;
     g.fillText(R.avoid.join("  ·  "), M, 1786);
 
-    g.fillStyle = "#9A6B45"; g.font = "600 28px " + F;
+    g.fillStyle = "#876712"; g.font = "600 28px " + F;
     g.textAlign = "right"; g.fillText("@hoyuhome_102", M + CW, 1866);
     g.textAlign = "left";
     return c.toDataURL("image/png");
