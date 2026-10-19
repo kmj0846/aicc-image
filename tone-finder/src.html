@@ -230,8 +230,8 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       <ul class="tags avoid" id="resAvoid"></ul>
     </div>
 
-    <div class="hoyu" id="refBox">
-      <h2 id="refTitle">호유홈도 웜톤 집이에요</h2>
+    <div class="hoyu ref" id="refBox">
+      <h2 id="refTitle">이런 웜톤 집을 참고해 보세요</h2>
       <p id="hoyuLine"></p>
       <div id="refPhotos"></div>
     </div>
@@ -274,9 +274,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       colors: [["크림 아이보리", "#EADBC4"], ["테라코타", "#C2704C"], ["올리브 그린", "#7E8354"]],
       materials: ["라탄·원목", "린넨·코튼", "브라스(황동)"],
       avoid: ["차가운 크롬·스틸 소품", "쨍한 블루 원색 소품"],
-      refTitle: "호유홈도 웜톤 집이에요",
-      hoyu: "웜톤 집을 꾸미는 과정을 인스타에 기록하고 있어요.",
-      refAlt: "호유홈 웜톤 집"
+      refTitle: "이런 웜톤 집을 참고해 보세요",
+      hoyu: "원목 바닥과 크림색 벽에 라탄, 리넨, 따뜻한 조명을 더했어요.",
+      refAlt: "웜톤 집 참고 사진"
     },
     cool: {
       name: "시크한 쿨톤 집",
@@ -519,13 +519,12 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     ).join("");
     $("resMaterials").innerHTML = R.materials.map((m) => "<li>" + m + "</li>").join("");
     $("resAvoid").innerHTML = R.avoid.map((m) => "<li>" + m + "</li>").join("");
-    $("refBox").classList.toggle("ref", type !== "warm");
     $("refTitle").textContent = R.refTitle;
     $("hoyuLine").textContent = R.hoyu;
     const list = PHOTOS[type] || [];
     $("refPhotos").innerHTML = list.length
       ? '<div class="gallery">' + list.map((src, i) => '<img src="' + src + '" alt="' + R.refAlt + " " + (i + 1) + '" loading="lazy">').join("") + "</div>" +
-        '<p class="count">' + [list.length > 1 ? "옆으로 넘겨서 " + list.length + "장 보기" : "", type !== "warm" ? "사진 Pexels" : ""].filter(Boolean).join(" · ") + "</p>"
+        '<p class="count">' + [list.length > 1 ? "옆으로 넘겨서 " + list.length + "장 보기" : "", "사진 Pexels"].filter(Boolean).join(" · ") + "</p>"
       : '<div class="ph">사진 준비 중</div>';
     $("refPhotos").querySelectorAll(".gallery img").forEach((img) => {
       const mark = () => img.classList.toggle("tall", img.naturalHeight > img.naturalWidth);
