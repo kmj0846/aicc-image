@@ -250,6 +250,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     <img id="cardImg" alt="우리집 톤 결과 카드">
     <p id="sheetMsg">이미지를 길게 눌러 사진에 저장하세요.</p>
     <div class="actions">
+      <button class="btn btn-main" type="button" id="shareBtn" hidden>사진에 저장하거나 공유하기</button>
       <button class="btn btn-main" type="button" id="downloadBtn" hidden>파일로 저장</button>
       <button class="btn btn-line" type="button" id="sheetClose">닫기</button>
     </div>
@@ -636,23 +637,38 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   }
 
   let cardUrl = "";
+  let cardFile = null;
+  const cardName = () => "hoyuhome-tone-" + last.type + ".png";
   $("saveBtn").addEventListener("click", async () => {
     $("saveBtn").textContent = "이미지 만드는 중…";
     cardUrl = await drawCard();
     $("saveBtn").textContent = "결과 이미지 저장";
     $("cardImg").src = cardUrl;
     // 앱 안에 띄운 화면에서는 파일 다운로드가 막혀 있어서, 이미지 길게 눌러 저장을 안내
-    $("downloadBtn").hidden = embedded;
+    cardFile = null;
+    if (!embedded && navigator.canShare) {
+      const blob = await (await fetch(cardUrl)).blob();
+      const file = new File([blob], cardName(), { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) cardFile = file;
+    }
+    $("shareBtn").hidden = !cardFile;
+    $("downloadBtn").hidden = embedded || !!cardFile;
     $("sheetMsg").textContent = embedded
       ? "이미지를 길게 눌러 사진에 저장하세요."
-      : "이미지를 길게 눌러 저장하거나, 아래 버튼으로 파일을 받으세요.";
+      : "이미지를 길게 눌러 저장하거나, 아래 버튼을 눌러 주세요.";
     $("sheet").hidden = false;
   });
-  $("downloadBtn").addEventListener("click", () => {
+  $("downloadBtn").addEventListener("click", async () => {
+    const url = URL.createObjectURL(await (await fetch(cardUrl)).blob());
     const a = document.createElement("a");
-    a.href = cardUrl;
-    a.download = "우리집톤-" + RESULTS[last.type].name.replace(/\s/g, "") + ".png";
+    a.href = url;
+    a.download = cardName();
     document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  // 폰에서는 공유 창의 "이미지 저장"으로 사진첩에 바로 저장할 수 있어요
+  $("shareBtn").addEventListener("click", async () => {
+    try { await navigator.share({ files: [cardFile], title: "우리집 톤 찾기" }); } catch (e) {}
   });
   $("sheetClose").addEventListener("click", () => { $("sheet").hidden = true; });
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").hidden = true; });

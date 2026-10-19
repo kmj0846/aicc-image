@@ -1,4 +1,4 @@
-"""src.html → index.html (단독 실행용 완성 파일) + artifact.html (Claude 아티팩트용).
+"""src.html → index.html·site/index.html (웹에 올리는 완성 파일) + artifact.html (Claude 아티팩트용).
 
 페이지에 쓰인 글자만 남긴 Pretendard 서브셋을 woff2로 만들어 파일 안에 직접 넣습니다.
 src.html의 문구를 바꾸면 이 스크립트를 다시 실행하세요.
@@ -18,6 +18,22 @@ from PIL import Image, ImageOps
 
 HERE = Path(__file__).parent
 WEIGHTS = {400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold"}
+DESCRIPTION = "집 사진 한 장으로 바닥·몰딩·벽 색을 읽어 웜톤·쿨톤·뉴트럴 소품을 추천해요. 사진은 내 폰 안에서만 처리돼요."
+ICON = (
+    "data:image/svg+xml,"
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E"
+    "%3Crect width='64' height='64' rx='14' fill='%23F3E4A4'/%3E"
+    "%3Cpath d='M14 32 32 16l18 16v16a2 2 0 0 1-2 2H16a2 2 0 0 1-2-2z' fill='%23C49A6C'/%3E"
+    "%3Crect x='27' y='36' width='10' height='14' fill='%23F7F2E9'/%3E%3C/svg%3E"
+)
+META = (
+    f'<meta name="description" content="{DESCRIPTION}">\n'
+    '<meta property="og:type" content="website">\n'
+    '<meta property="og:title" content="우리집 톤 찾기 · 호유홈">\n'
+    f'<meta property="og:description" content="{DESCRIPTION}">\n'
+    '<meta name="theme-color" content="#F7F2E9">\n'
+    f'<link rel="icon" href="{ICON}">\n'
+)
 
 
 def subset_font(path: Path, text: str) -> str:
@@ -67,12 +83,17 @@ def main(font_dir: str) -> None:
     page = page.replace("/*@PHOTOS@*/{ warm: [], cool: [], neutral: [] }", json.dumps(photos))
 
     (HERE / "artifact.html").write_text(page, encoding="utf-8")
+    # 단독 실행용: 제목·미리보기 정보를 <head>에 둬야 인스타·카톡 링크 미리보기에 잡힌다.
+    head_end = page.index("<style>")
+    head, body = page[:head_end], page[head_end:]
     standalone = (
         '<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-        "</head>\n<body>\n" + page + "\n</body>\n</html>\n"
+        + head + META + "</head>\n<body>\n" + body + "\n</body>\n</html>\n"
     )
-    (HERE / "index.html").write_text(standalone, encoding="utf-8")
+    for out in (HERE / "index.html", HERE / "site" / "index.html"):
+        out.parent.mkdir(exist_ok=True)
+        out.write_text(standalone, encoding="utf-8")
     print(f"index.html {len(standalone) // 1024}KB")
 
 
