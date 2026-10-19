@@ -139,6 +139,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .gallery::-webkit-scrollbar { display: none; }
 .gallery img { flex: none; width: 86%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-md); scroll-snap-align: center; display: block; }
+.gallery img.tall { aspect-ratio: 4 / 5; width: 72%; }
 .gallery img:only-child { width: 100%; }
 .count { font-size: 12px; opacity: .8; font-variant-numeric: tabular-nums; }
 
@@ -525,6 +526,10 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       ? '<div class="gallery">' + list.map((src, i) => '<img src="' + src + '" alt="' + R.refAlt + " " + (i + 1) + '" loading="lazy">').join("") + "</div>" +
         (list.length > 1 ? '<p class="count">옆으로 넘겨서 ' + list.length + "장 보기</p>" : "")
       : '<div class="ph">사진 준비 중</div>';
+    $("refPhotos").querySelectorAll(".gallery img").forEach((img) => {
+      const mark = () => img.classList.toggle("tall", img.naturalHeight > img.naturalWidth);
+      img.complete ? mark() : img.addEventListener("load", mark, { once: true });
+    });
     $("refPhotos").querySelector(".gallery")?.scrollTo(0, 0);
   }
 
