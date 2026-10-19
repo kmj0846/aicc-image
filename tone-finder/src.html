@@ -524,7 +524,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     const list = PHOTOS[type] || [];
     $("refPhotos").innerHTML = list.length
       ? '<div class="gallery">' + list.map((src, i) => '<img src="' + src + '" alt="' + R.refAlt + " " + (i + 1) + '" loading="lazy">').join("") + "</div>" +
-        (list.length > 1 ? '<p class="count">옆으로 넘겨서 ' + list.length + "장 보기</p>" : "")
+        '<p class="count">' + [list.length > 1 ? "옆으로 넘겨서 " + list.length + "장 보기" : "", type !== "warm" ? "사진 Pexels" : ""].filter(Boolean).join(" · ") + "</p>"
       : '<div class="ph">사진 준비 중</div>';
     $("refPhotos").querySelectorAll(".gallery img").forEach((img) => {
       const mark = () => img.classList.toggle("tall", img.naturalHeight > img.naturalWidth);
