@@ -1,0 +1,636 @@
+<title>우리집 톤 찾기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*@FONTS@*/
+/* Layout: 한 손으로 쓰는 480px 단일 컬럼, 화면 3개(시작 → 색 찍기 → 결과)를 순서대로 전환 */
+:root {
+  --ivory: #F7F2E9;
+  --paper: #FFFCF6;
+  --line: #E7DDCC;
+  --ink: #3B3027;
+  --ink-soft: #6F6256;
+  --wood: #9A6B45;
+  --wood-deep: #7A5233;
+  --sage: #8A9C80;
+  --sage-deep: #5D7155;
+  --sage-tint: #E9EEE3;
+  --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --r-lg: 22px;
+  --r-md: 14px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--ivory); }
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  word-break: keep-all;
+  -webkit-tap-highlight-color: transparent;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.screen { display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 28px; line-height: 1.35; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font-size: 21px; line-height: 1.4; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing: 0.02em; }
+.eyebrow { font-size: 13px; font-weight: 600; color: var(--wood); letter-spacing: 0.04em; }
+.muted { color: var(--ink-soft); font-size: 14px; }
+
+/* 버튼 */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 54px; padding: 14px 20px;
+  border-radius: 999px; border: 1.5px solid transparent;
+  font: 600 16px/1.3 var(--font); text-decoration: none; cursor: pointer;
+  transition: transform .12s ease, background-color .15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn:focus-visible, .slot:focus-visible, .link:focus-visible { outline: 3px solid var(--sage); outline-offset: 3px; }
+.btn-wood { background: var(--wood); color: var(--paper); }
+.btn-wood:hover { background: var(--wood-deep); }
+.btn-sage { background: var(--sage-deep); color: var(--paper); }
+.btn-line { background: transparent; color: var(--sage-deep); border-color: var(--sage); }
+.btn[disabled] { background: var(--line); color: var(--ink-soft); cursor: not-allowed; transform: none; }
+.link {
+  align-self: center; background: none; border: 0; padding: 8px;
+  font: 500 14px var(--font); color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* 시작 화면 */
+.hero { display: flex; flex-direction: column; gap: 14px; padding-top: 12px; }
+.swatch-row { display: flex; gap: 8px; }
+.swatch-row span { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--paper); box-shadow: 0 0 0 1px var(--line); }
+.steps { list-style: none; margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.steps li { display: flex; gap: 12px; align-items: baseline; font-size: 15px; }
+.steps b { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--sage-tint); color: var(--sage-deep);
+  font-size: 13px; display: inline-flex; align-items: center; justify-content: center; transform: translateY(-1px); }
+.privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--sage-deep);
+  background: var(--sage-tint); border-radius: var(--r-md); padding: 12px 14px; }
+.privacy svg { flex: none; margin-top: 3px; }
+
+/* 색 찍기 화면 */
+.guide { display: flex; flex-direction: column; gap: 4px; }
+.guide .now { font-size: 20px; font-weight: 700; }
+.photo { position: relative; border-radius: var(--r-lg); overflow: hidden; background: var(--line); touch-action: manipulation; }
+.photo canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+.marker {
+  position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%;
+  border: 3px solid #fff; box-shadow: 0 2px 8px rgba(40, 28, 18, .35), 0 0 0 1px rgba(40, 28, 18, .25);
+  pointer-events: none; animation: pop .22s ease-out;
+}
+.marker i {
+  position: absolute; top: -12px; right: -12px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ink); color: var(--paper); font: 700 12px/22px var(--font); font-style: normal; text-align: center;
+}
+@keyframes pop { from { transform: scale(.4); } to { transform: scale(1); } }
+.slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.slot {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 10px;
+  background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  font: 500 13px/1.3 var(--font); color: var(--ink); cursor: pointer; min-width: 0;
+}
+.slot.active { border-color: var(--wood); box-shadow: 0 0 0 3px rgba(154, 107, 69, .14); }
+.slot .dot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed var(--line); background: transparent; }
+.slot.done .dot { border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+.slot .sub { font-size: 11px; color: var(--ink-soft); }
+.tip { font-size: 13px; color: var(--ink-soft); line-height: 1.55; }
+
+/* 결과 화면 */
+.result-head { display: flex; flex-direction: column; gap: 10px; padding: 24px 20px; border-radius: var(--r-lg);
+  background: var(--paper); border: 1px solid var(--line); }
+.result-head .name { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; }
+.meter { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.meter .track { position: relative; height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, #8FA1B0 0%, #C9C6BE 50%, #C98D5A 100%); }
+.meter .knob { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+  background: var(--paper); border: 3px solid var(--ink); }
+.meter .ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.picked { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.picked div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; text-align: center; }
+.picked span.c { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--paper); box-shadow: 0 0 0 1px var(--line); }
+.picked small { font-size: 11px; color: var(--ink-soft); }
+.block { display: flex; flex-direction: column; gap: 10px; }
+.chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.chip { display: flex; flex-direction: column; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+.chip span { height: 64px; }
+.chip p { padding: 8px 10px; font-size: 13px; font-weight: 600; line-height: 1.35; }
+.chip p small { display: block; font-weight: 400; font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.tags li { padding: 8px 14px; border-radius: 999px; font-size: 14px; background: var(--sage-tint); color: var(--sage-deep); font-weight: 500; }
+.tags.avoid li { background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.tags.avoid li::before { content: "× "; color: var(--wood); font-weight: 700; }
+.hoyu { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--r-lg);
+  background: var(--wood); color: var(--paper); }
+.hoyu p { font-size: 14px; opacity: .92; }
+.hoyu .ph { aspect-ratio: 4 / 3; max-width: 100%; border-radius: var(--r-md); border: 1.5px dashed rgba(255, 252, 246, .55);
+  display: flex; align-items: center; justify-content: center; font-size: 13px; color: rgba(255, 252, 246, .8); overflow: hidden; }
+.hoyu .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* 저장 시트 */
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgba(40, 30, 22, .55); display: flex; align-items: flex-end; justify-content: center; }
+.sheet-box { width: 100%; max-width: 480px; max-height: 92%; overflow: auto; background: var(--ivory);
+  border-radius: 24px 24px 0 0; display: flex; flex-direction: column; gap: 14px;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet-box img { width: 62%; max-width: 100%; align-self: center; border-radius: 14px; box-shadow: 0 6px 24px rgba(40, 28, 18, .2);
+  -webkit-touch-callout: default; user-select: auto; }
+.sheet-box p { text-align: center; font-size: 14px; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) { .marker { animation: none; } .btn { transition: none; } }
+</style>
+
+<div class="wrap">
+
+  <!-- 1. 시작 -->
+  <section class="screen" id="screenStart">
+    <div class="hero">
+      <div class="swatch-row" aria-hidden="true">
+        <span style="background:#C49A6C"></span><span style="background:#F1EBDF"></span><span style="background:#E9E2D6"></span>
+      </div>
+      <p class="eyebrow">호유홈 · 우리집 톤 찾기</p>
+      <h1>집 사진 한 장으로<br>우리집 톤 찾기</h1>
+      <p class="muted">바닥, 문·몰딩, 벽의 색을 읽어서 웜톤 소품이 어울리는 집인지, 쿨톤 소품이 어울리는 집인지 알려드려요.</p>
+    </div>
+    <ol class="steps">
+      <li><b>1</b><span>거실이나 방 사진을 한 장 올려요</span></li>
+      <li><b>2</b><span>사진에서 바닥 → 문·몰딩 → 벽 순서로 터치해요</span></li>
+      <li><b>3</b><span>어울리는 색과 소재를 확인해요</span></li>
+    </ol>
+    <div class="actions">
+      <label class="btn btn-wood" for="fileInput" tabindex="0" id="uploadBtn">사진 올리기</label>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <button class="link" type="button" id="sampleBtn">예시 사진으로 먼저 해보기</button>
+    </div>
+    <p class="privacy">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span>사진은 내 폰 안에서만 처리되고 어디에도 저장되지 않아요</span>
+    </p>
+  </section>
+
+  <!-- 2. 색 찍기 -->
+  <section class="screen" id="screenPick" hidden>
+    <div class="guide" aria-live="polite">
+      <p class="eyebrow" id="stepCount">1 / 3</p>
+      <p class="now" id="stepNow">① 바닥을 터치해 주세요</p>
+      <p class="muted" id="stepHint">바닥재가 잘 보이는 곳을 눌러 주세요.</p>
+    </div>
+    <div class="photo" id="photoBox">
+      <canvas id="photoCanvas" aria-label="올린 사진. 터치하면 그 지점의 색을 읽어요."></canvas>
+    </div>
+    <div class="slots" id="slots"></div>
+    <p class="tip">그림자나 조명 반사가 없는 곳을 누르면 더 정확해요. 노란 전구색 조명 아래에서 찍은 사진은 실제보다 따뜻하게 나올 수 있어요. 낮에 자연광으로 찍은 사진을 추천해요.</p>
+    <div class="actions">
+      <button class="btn btn-wood" type="button" id="judgeBtn" disabled>세 곳을 모두 찍어 주세요</button>
+      <button class="link" type="button" id="backBtn">다른 사진 고르기</button>
+    </div>
+  </section>
+
+  <!-- 3. 결과 -->
+  <section class="screen" id="screenResult" hidden>
+    <div class="result-head">
+      <p class="eyebrow">우리집 톤 결과</p>
+      <p class="name" id="resName">따뜻한 웜톤 집</p>
+      <p class="muted" id="resLine"></p>
+      <div class="meter" aria-label="따뜻함 점수">
+        <div class="track"><span class="knob" id="resKnob"></span></div>
+        <div class="ends"><span>쿨톤</span><span id="resScore">따뜻함 0점</span><span>웜톤</span></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>우리집에서 찍은 색</h3>
+      <div class="picked" id="resPicked"></div>
+    </div>
+    <div class="block">
+      <h3>어울리는 색</h3>
+      <div class="chips" id="resColors"></div>
+    </div>
+    <div class="block">
+      <h3>어울리는 소재</h3>
+      <ul class="tags" id="resMaterials"></ul>
+    </div>
+    <div class="block">
+      <h3>피하면 좋은 것</h3>
+      <ul class="tags avoid" id="resAvoid"></ul>
+    </div>
+
+    <div class="hoyu">
+      <h2>호유홈도 웜톤 집이에요</h2>
+      <p id="hoyuLine"></p>
+      <div class="ph" id="hoyuPhoto">호유홈 예시 사진 자리</div>
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-wood" href="https://litt.ly/hoyuhome_102" target="_blank" rel="noopener">호유홈 추천템 보기</a>
+      <a class="btn btn-line" href="https://www.instagram.com/hoyuhome_102/" target="_blank" rel="noopener">인스타 @hoyuhome_102 팔로우</a>
+      <button class="btn btn-sage" type="button" id="saveBtn">결과 이미지 저장</button>
+      <button class="link" type="button" id="againBtn">다른 사진으로 다시 해보기</button>
+    </div>
+  </section>
+</div>
+
+<!-- 결과 이미지 시트 -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-box" role="dialog" aria-modal="true" aria-label="결과 이미지">
+    <img id="cardImg" alt="우리집 톤 결과 카드">
+    <p id="sheetMsg">이미지를 길게 눌러 사진에 저장하세요.</p>
+    <div class="actions">
+      <button class="btn btn-wood" type="button" id="downloadBtn" hidden>파일로 저장</button>
+      <button class="btn btn-line" type="button" id="sheetClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // 호유홈 예시 사진: 이미지 주소나 data URI를 넣으면 결과 화면 자리 표시가 사진으로 바뀌어요.
+  const HOYU_PHOTO = "";
+
+  const STEPS = [
+    { key: "floor", label: "바닥", mark: "①", weight: 0.5, hint: "바닥재가 잘 보이는 곳을 눌러 주세요." },
+    { key: "trim", label: "문·몰딩", mark: "②", weight: 0.3, hint: "문, 문틀, 걸레받이 같은 몰딩을 눌러 주세요." },
+    { key: "wall", label: "벽", mark: "③", weight: 0.2, hint: "그림자 없이 밝은 벽면을 눌러 주세요." }
+  ];
+
+  const RESULTS = {
+    warm: {
+      name: "따뜻한 웜톤 집",
+      line: "바닥과 몰딩에 노란 기운이 도는 집이에요. 햇살 같은 따뜻한 색 소품이 자연스럽게 녹아들어요.",
+      colors: [["크림 아이보리", "#EADBC4"], ["테라코타", "#C2704C"], ["올리브 그린", "#7E8354"]],
+      materials: ["라탄·원목", "린넨·코튼", "브라스(황동)"],
+      avoid: ["차가운 크롬·스틸 소품", "쨍한 블루 원색 소품"],
+      hoyu: "같은 웜톤 집에서 실제로 쓰고 있는 소품들을 모아뒀어요."
+    },
+    cool: {
+      name: "시크한 쿨톤 집",
+      line: "흰색과 회색이 중심인 맑은 집이에요. 차분한 그레이·블루 소품이 공간을 더 깔끔하게 보여줘요.",
+      colors: [["블루 그레이", "#8A99A6"], ["차콜", "#3F4349"], ["실버 그레이", "#C6CACF"]],
+      materials: ["스테인리스·크롬", "투명 유리", "화이트 대리석"],
+      avoid: ["진한 오렌지·테라코타", "노란 기 강한 원목 소품"],
+      hoyu: "톤은 달라도 소품 고르는 기준은 같아요. 추천템에서 힌트를 얻어 보세요."
+    },
+    neutral: {
+      name: "차분한 뉴트럴 집",
+      line: "따뜻함과 차가움이 균형을 이룬 집이에요. 베이지와 그레이 사이의 중간색이 편안하게 어울려요.",
+      colors: [["그레이지", "#B5AC9F"], ["오트밀", "#DCD2C2"], ["세이지 그린", "#9AA58A"]],
+      materials: ["부클레 패브릭", "라이트 오크", "무광 세라믹"],
+      avoid: ["채도 높은 원색 소품", "광택이 강한 소재"],
+      hoyu: "뉴트럴 집은 웜톤 소품을 한두 개 섞으면 한결 포근해져요."
+    }
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const screens = { start: $("screenStart"), pick: $("screenPick"), result: $("screenResult") };
+  const canvas = $("photoCanvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const embedded = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+
+  let picks = [null, null, null];   // { x, y, rgb, lab, warmth }
+  let active = 0;
+  let last = null;                  // 마지막 판정 결과
+
+  function show(name) {
+    Object.entries(screens).forEach(([k, el]) => { el.hidden = k !== name; });
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- 색 계산 ----------
+  function srgbToLab([r, g, b]) {
+    const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const R = lin(r), G = lin(g), B = lin(b);
+    const X = (0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047;
+    const Y = (0.2126 * R + 0.7152 * G + 0.0722 * B) / 1.0;
+    const Z = (0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883;
+    const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    const fx = f(X), fy = f(Y), fz = f(Z);
+    return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+  }
+  // 한 지점의 따뜻함: 노랑(b*)을 기본으로, 붉은 기(a*)를 30% 더함
+  const warmthOf = (lab) => lab.b + 0.3 * lab.a;
+  const toHex = (rgb) => "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  function judge() {
+    const W = picks.reduce((sum, p, i) => sum + p.warmth * STEPS[i].weight, 0);
+    // W = 6 을 중간(50점)으로 두고 1당 5점. 65점 이상 웜, 35점 이하 쿨.
+    const score = Math.round(clamp(50 + (W - 6) * 5, 0, 100));
+    const type = score >= 65 ? "warm" : score <= 35 ? "cool" : "neutral";
+    return { W, score, type };
+  }
+  const feel = (w) => (w >= 9 ? "따뜻한 편" : w <= 3 ? "차가운 편" : "중간");
+
+  // ---------- 사진 불러오기 ----------
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+  function setPhoto(img) {
+    const max = 1600;
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    canvas.width = Math.round(img.naturalWidth * s);
+    canvas.height = Math.round(img.naturalHeight * s);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    picks = [null, null, null];
+    active = 0;
+    renderPick();
+    show("pick");
+  }
+  $("fileInput").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    try { setPhoto(await loadImage(url)); }
+    catch (err) { $("uploadBtn").textContent = "이 사진은 열 수 없어요. 다른 사진을 골라 주세요"; }
+    finally { URL.revokeObjectURL(url); e.target.value = ""; }
+  });
+  $("uploadBtn").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("fileInput").click(); }
+  });
+  $("sampleBtn").addEventListener("click", async () => setPhoto(await loadImage(makeSampleRoom())));
+  $("backBtn").addEventListener("click", () => show("start"));
+  $("againBtn").addEventListener("click", () => show("start"));
+
+  // 예시 사진: 오크 바닥, 아이보리 몰딩, 웜화이트 벽의 방을 그려서 사용
+  function makeSampleRoom() {
+    const c = document.createElement("canvas");
+    c.width = 1080; c.height = 1350;
+    const g = c.getContext("2d");
+    const wall = g.createLinearGradient(0, 0, 0, 900);
+    wall.addColorStop(0, "#EDE6DA"); wall.addColorStop(1, "#E3DACB");
+    g.fillStyle = wall; g.fillRect(0, 0, 1080, 900);
+    // 창으로 들어오는 빛
+    const sun = g.createRadialGradient(260, 260, 20, 260, 260, 520);
+    sun.addColorStop(0, "rgba(255,250,236,.55)"); sun.addColorStop(1, "rgba(255,250,236,0)");
+    g.fillStyle = sun; g.fillRect(0, 0, 1080, 900);
+    // 문틀과 문
+    g.fillStyle = "#F2ECE1"; g.fillRect(700, 190, 300, 710);
+    g.fillStyle = "#E8E0D2"; g.fillRect(730, 220, 240, 680);
+    g.fillStyle = "#DDD3C2"; g.fillRect(762, 260, 176, 250); g.fillRect(762, 560, 176, 290);
+    g.fillStyle = "#E8E0D2"; g.fillRect(770, 268, 160, 234); g.fillRect(770, 568, 160, 274);
+    g.fillStyle = "#B49B76"; g.beginPath(); g.arc(944, 580, 10, 0, Math.PI * 2); g.fill();
+    // 바닥: 오크 마루
+    const planks = ["#C79E70", "#BF9465", "#C49A6B", "#B98D5F", "#CBA477"];
+    for (let row = 0; row < 9; row++) {
+      const y = 900 + row * 50;
+      let x = -((row * 137) % 260);
+      while (x < 1080) {
+        const w = 240 + ((row * 31 + x) % 90);
+        g.fillStyle = planks[(row + Math.abs(x)) % planks.length];
+        g.fillRect(x, y, w, 50);
+        g.fillStyle = "rgba(90,58,30,.18)"; g.fillRect(x, y, 2, 50);
+        x += w;
+      }
+      g.fillStyle = "rgba(90,58,30,.16)"; g.fillRect(0, y, 1080, 2);
+    }
+    const shade = g.createLinearGradient(0, 900, 0, 1350);
+    shade.addColorStop(0, "rgba(60,36,16,.14)"); shade.addColorStop(1, "rgba(60,36,16,0)");
+    g.fillStyle = shade; g.fillRect(0, 900, 1080, 450);
+    // 걸레받이
+    g.fillStyle = "#F2ECE1"; g.fillRect(0, 872, 700, 30); g.fillRect(1000, 872, 80, 30);
+    // 소파 실루엣
+    g.fillStyle = "#D6CCBB"; g.fillRect(70, 640, 520, 200);
+    g.fillStyle = "#CFC4B1"; g.fillRect(40, 720, 580, 150);
+    g.fillStyle = "#8E6A48"; g.fillRect(80, 870, 14, 34); g.fillRect(566, 870, 14, 34);
+    // 사진 느낌의 잔노이즈
+    const d = g.getImageData(0, 0, 1080, 1350);
+    for (let i = 0; i < d.data.length; i += 4) {
+      const n = (Math.random() - 0.5) * 10;
+      d.data[i] += n; d.data[i + 1] += n; d.data[i + 2] += n;
+    }
+    g.putImageData(d, 0, 0);
+    return c.toDataURL("image/jpeg", 0.9);
+  }
+
+  // ---------- 터치해서 색 읽기 ----------
+  canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const rgb = sampleAt(x, y);
+    const lab = srgbToLab(rgb);
+    picks[active] = { x: x / canvas.width, y: y / canvas.height, rgb, lab, warmth: warmthOf(lab) };
+    const next = picks.findIndex((p) => !p);
+    if (next !== -1) active = next;
+    renderPick();
+  });
+
+  // 터치한 지점을 중심으로 15x15 픽셀 평균색
+  function sampleAt(cx, cy) {
+    const size = 15;
+    const x0 = clamp(Math.round(cx) - 7, 0, Math.max(0, canvas.width - size));
+    const y0 = clamp(Math.round(cy) - 7, 0, Math.max(0, canvas.height - size));
+    const w = Math.min(size, canvas.width), h = Math.min(size, canvas.height);
+    const data = ctx.getImageData(x0, y0, w, h).data;
+    let r = 0, g = 0, b = 0;
+    const n = data.length / 4;
+    for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
+    return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+  }
+
+  function renderPick() {
+    const box = $("photoBox");
+    box.querySelectorAll(".marker").forEach((m) => m.remove());
+    picks.forEach((p, i) => {
+      if (!p) return;
+      const m = document.createElement("span");
+      m.className = "marker";
+      m.style.left = (p.x * 100) + "%";
+      m.style.top = (p.y * 100) + "%";
+      m.style.background = toHex(p.rgb);
+      m.innerHTML = "<i>" + (i + 1) + "</i>";
+      box.appendChild(m);
+    });
+
+    const slots = $("slots");
+    slots.innerHTML = "";
+    STEPS.forEach((s, i) => {
+      const p = picks[i];
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "slot" + (i === active ? " active" : "") + (p ? " done" : "");
+      b.innerHTML = '<span class="dot"' + (p ? ' style="background:' + toHex(p.rgb) + '"' : "") + "></span>" +
+        "<span>" + s.mark + " " + s.label + "</span>" +
+        '<span class="sub">' + (p ? (i === active ? "다시 터치하세요" : "다시 찍기") : (i === active ? "지금 터치" : "아직 안 찍음")) + "</span>";
+      b.setAttribute("aria-pressed", i === active ? "true" : "false");
+      b.addEventListener("click", () => { active = i; renderPick(); });
+      slots.appendChild(b);
+    });
+
+    const s = STEPS[active];
+    const doneCount = picks.filter(Boolean).length;
+    const allDone = doneCount === 3;
+    $("stepCount").textContent = allDone ? "3 / 3 완료" : (active + 1) + " / 3";
+    $("stepNow").textContent = allDone && picks[active]
+      ? "세 곳을 모두 찍었어요"
+      : s.mark + " " + s.label + "을 터치해 주세요";
+    $("stepHint").textContent = allDone && picks[active]
+      ? "고치고 싶은 곳은 아래 칸을 누른 뒤 사진을 다시 터치하세요."
+      : s.hint;
+    const btn = $("judgeBtn");
+    btn.disabled = !allDone;
+    btn.textContent = allDone ? "우리집 톤 확인하기" : "세 곳을 모두 찍어 주세요 (" + doneCount + "/3)";
+  }
+
+  $("judgeBtn").addEventListener("click", () => {
+    last = judge();
+    renderResult(last);
+    show("result");
+  });
+
+  // ---------- 결과 ----------
+  function renderResult({ score, type }) {
+    const R = RESULTS[type];
+    $("resName").textContent = R.name;
+    $("resLine").textContent = R.line;
+    $("resKnob").style.left = score + "%";
+    $("resScore").textContent = "따뜻함 " + score + "점";
+
+    $("resPicked").innerHTML = picks.map((p, i) =>
+      '<div><span class="c" style="background:' + toHex(p.rgb) + '"></span>' +
+      "<span>" + STEPS[i].label + "</span><small>" + feel(p.warmth) + " · " + Math.round(STEPS[i].weight * 100) + "%</small></div>"
+    ).join("");
+    $("resColors").innerHTML = R.colors.map(([n, h]) =>
+      '<div class="chip"><span style="background:' + h + '"></span><p>' + n + "<small>" + h + "</small></p></div>"
+    ).join("");
+    $("resMaterials").innerHTML = R.materials.map((m) => "<li>" + m + "</li>").join("");
+    $("resAvoid").innerHTML = R.avoid.map((m) => "<li>" + m + "</li>").join("");
+    $("hoyuLine").textContent = R.hoyu;
+    if (HOYU_PHOTO) $("hoyuPhoto").innerHTML = '<img src="' + HOYU_PHOTO + '" alt="호유홈 거실">';
+  }
+
+  // ---------- 9:16 결과 카드 ----------
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+  function wrapLines(g, text, maxW) {
+    const words = text.split(" ");
+    const lines = [];
+    let line = "";
+    words.forEach((w) => {
+      const test = line ? line + " " + w : w;
+      if (g.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+      else line = test;
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  async function drawCard() {
+    const F = 'Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    try { await Promise.all(["400", "600", "700"].map((w) => document.fonts.load(w + " 40px Pretendard"))); } catch (e) {}
+    const R = RESULTS[last.type];
+    const W = 1080, H = 1920, M = 72, CW = W - M * 2;
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+
+    g.fillStyle = "#F7F2E9"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#9A6B45"; g.font = "600 34px " + F;
+    g.fillText("우리집 톤 찾기", M, 118);
+
+    // 사진 (가운데 맞춰 자르기)
+    const px = M, py = 160, pw = CW, ph = 560;
+    const s = Math.max(pw / canvas.width, ph / canvas.height);
+    const sw = pw / s, sh = ph / s;
+    g.save(); roundRect(g, px, py, pw, ph, 40); g.clip();
+    g.drawImage(canvas, (canvas.width - sw) / 2, (canvas.height - sh) / 2, sw, sh, px, py, pw, ph);
+    g.restore();
+
+    // 찍은 색 3개
+    picks.forEach((p, i) => {
+      const cx = M + 70 + i * 150, cy = py + ph;
+      g.beginPath(); g.arc(cx, cy, 58, 0, Math.PI * 2);
+      g.fillStyle = "#FFFCF6"; g.fill();
+      g.beginPath(); g.arc(cx, cy, 50, 0, Math.PI * 2);
+      g.fillStyle = toHex(p.rgb); g.fill();
+      g.fillStyle = "#6F6256"; g.font = "500 26px " + F; g.textAlign = "center";
+      g.fillText(STEPS[i].label, cx, cy + 96);
+      g.textAlign = "left";
+    });
+
+    g.fillStyle = "#3B3027"; g.font = "700 88px " + F;
+    g.fillText(R.name, M, 940);
+    g.fillStyle = "#6F6256"; g.font = "400 36px " + F;
+    wrapLines(g, R.line, CW).slice(0, 3).forEach((ln, i) => g.fillText(ln, M, 1010 + i * 54));
+
+    // 따뜻함 막대
+    const by = 1160;
+    const grad = g.createLinearGradient(M, 0, M + CW, 0);
+    grad.addColorStop(0, "#8FA1B0"); grad.addColorStop(0.5, "#C9C6BE"); grad.addColorStop(1, "#C98D5A");
+    roundRect(g, M, by, CW, 20, 10); g.fillStyle = grad; g.fill();
+    const kx = clamp(M + (CW * last.score) / 100, M + 22, M + CW - 22);
+    g.beginPath(); g.arc(kx, by + 10, 22, 0, Math.PI * 2); g.fillStyle = "#FFFCF6"; g.fill();
+    g.lineWidth = 6; g.strokeStyle = "#3B3027"; g.stroke();
+    g.font = "500 26px " + F; g.fillStyle = "#6F6256";
+    g.fillText("쿨톤", M, by + 70);
+    g.textAlign = "center"; g.fillText("따뜻함 " + last.score + "점", W / 2, by + 70);
+    g.textAlign = "right"; g.fillText("웜톤", M + CW, by + 70);
+    g.textAlign = "left";
+
+    // 어울리는 색
+    g.fillStyle = "#5D7155"; g.font = "600 30px " + F;
+    g.fillText("어울리는 색", M, 1310);
+    const gap = 24, chipW = (CW - gap * 2) / 3;
+    R.colors.forEach(([n, h], i) => {
+      const x = M + i * (chipW + gap);
+      roundRect(g, x, 1340, chipW, 120, 24); g.fillStyle = h; g.fill();
+      g.fillStyle = "#3B3027"; g.font = "600 30px " + F;
+      g.fillText(n, x + 4, 1506);
+    });
+
+    g.fillStyle = "#5D7155"; g.font = "600 30px " + F;
+    g.fillText("어울리는 소재", M, 1600);
+    g.fillStyle = "#3B3027"; g.font = "500 36px " + F;
+    g.fillText(R.materials.join("  ·  "), M, 1652);
+
+    g.fillStyle = "#5D7155"; g.font = "600 30px " + F;
+    g.fillText("피하면 좋은 것", M, 1736);
+    g.fillStyle = "#6F6256"; g.font = "500 34px " + F;
+    g.fillText(R.avoid.join("  ·  "), M, 1786);
+
+    g.fillStyle = "#9A6B45"; g.font = "600 28px " + F;
+    g.textAlign = "right"; g.fillText("@hoyuhome_102", M + CW, 1866);
+    g.textAlign = "left";
+    return c.toDataURL("image/png");
+  }
+
+  let cardUrl = "";
+  $("saveBtn").addEventListener("click", async () => {
+    $("saveBtn").textContent = "이미지 만드는 중…";
+    cardUrl = await drawCard();
+    $("saveBtn").textContent = "결과 이미지 저장";
+    $("cardImg").src = cardUrl;
+    // 앱 안에 띄운 화면에서는 파일 다운로드가 막혀 있어서, 이미지 길게 눌러 저장을 안내
+    $("downloadBtn").hidden = embedded;
+    $("sheetMsg").textContent = embedded
+      ? "이미지를 길게 눌러 사진에 저장하세요."
+      : "이미지를 길게 눌러 저장하거나, 아래 버튼으로 파일을 받으세요.";
+    $("sheet").hidden = false;
+  });
+  $("downloadBtn").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = cardUrl;
+    a.download = "우리집톤-" + RESULTS[last.type].name.replace(/\s/g, "") + ".png";
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  $("sheetClose").addEventListener("click", () => { $("sheet").hidden = true; });
+  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").hidden = true; });
+})();
+</script>
