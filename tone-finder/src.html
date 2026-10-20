@@ -182,7 +182,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     </div>
     <ol class="steps">
       <li><b>1</b><span>거실이나 방 사진을 1~3장 올려요</span></li>
-      <li><b>2</b><span>사진에서 바닥 → 문·몰딩 → 벽 순서로 터치해요</span></li>
+      <li><b>2</b><span>바닥 → 문·몰딩 → 벽을 터치해요. 사진마다 잘 보이는 곳을 골라도 돼요</span></li>
       <li><b>3</b><span>어울리는 색과 소재를 확인해요</span></li>
     </ol>
     <div class="actions">
@@ -322,13 +322,12 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const embedded = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 
-  // 사진은 최대 3장. 사진마다 바닥·문/몰딩·벽을 하나씩 찍는다.
+  // 사진은 최대 3장. 바닥·문/몰딩·벽은 각각 어느 사진에서 찍어도 된다.
   const MAX_PHOTOS = 3;
-  let photos = [];                  // { canvas, thumb, picks, active }
-  let cur = 0;
-  let picks = [null, null, null];   // 지금 보고 있는 사진의 picks: { x, y, rgb, lab, warmth }
+  let photos = [];                  // { canvas, thumb }
+  let cur = 0;                      // 지금 보고 있는 사진
+  let picks = [null, null, null];   // { photo, x, y, rgb, lab, warmth }
   let active = 0;
-  let merged = [];                  // 판정에 쓴, 사진 여러 장을 합친 칸별 색
   let last = null;                  // 마지막 판정 결과
 
   function show(name) {
@@ -353,13 +352,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
   function judge() {
-    // 사진마다 가중 따뜻함을 구해 평균. 칸별 색도 사진들의 평균으로 보여준다.
-    const W = photos.reduce((sum, ph) => sum + ph.picks.reduce((w, p, i) => w + p.warmth * STEPS[i].weight, 0), 0) / photos.length;
-    merged = STEPS.map((_, i) => {
-      const list = photos.map((ph) => ph.picks[i]);
-      const rgb = [0, 1, 2].map((k) => Math.round(list.reduce((t, p) => t + p.rgb[k], 0) / list.length));
-      return { rgb, warmth: list.reduce((t, p) => t + p.warmth, 0) / list.length };
-    });
+    const W = picks.reduce((sum, p, i) => sum + p.warmth * STEPS[i].weight, 0);
     // W = 6 을 중간(50점)으로 두고 1당 5점. 65점 이상 웜, 35점 이하 쿨.
     const score = Math.round(clamp(50 + (W - 6) * 5, 0, 100));
     const type = score >= 65 ? "warm" : score <= 35 ? "cool" : "neutral";
@@ -387,7 +380,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     const ts = 128 / Math.min(c.width, c.height);
     t.width = Math.round(c.width * ts); t.height = Math.round(c.height * ts);
     t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
-    return { canvas: c, thumb: t.toDataURL("image/jpeg", 0.7), picks: [null, null, null], active: 0 };
+    return { canvas: c, thumb: t.toDataURL("image/jpeg", 0.7) };
   }
   function selectPhoto(i) {
     cur = i;
@@ -395,12 +388,12 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     canvas.width = ph.canvas.width;
     canvas.height = ph.canvas.height;
     ctx.drawImage(ph.canvas, 0, 0);
-    picks = ph.picks;
-    active = ph.active;
     renderPick();
   }
   function setPhoto(img) {
     photos = [toPhoto(img)];
+    picks = [null, null, null];
+    active = 0;
     selectPhoto(0);
     show("pick");
   }
@@ -416,6 +409,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     }
     if (next.length === before) return false;
     photos = next;
+    if (reset) { picks = [null, null, null]; active = 0; }
     selectPhoto(before);
     show("pick");
     return true;
@@ -495,7 +489,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
     const rgb = sampleAt(x, y);
     const lab = srgbToLab(rgb);
-    picks[active] = { x: x / canvas.width, y: y / canvas.height, rgb, lab, warmth: warmthOf(lab) };
+    picks[active] = { photo: cur, x: x / canvas.width, y: y / canvas.height, rgb, lab, warmth: warmthOf(lab) };
     const next = picks.findIndex((p) => !p);
     if (next !== -1) active = next;
     renderPick();
@@ -518,15 +512,15 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     const box = $("thumbs");
     box.innerHTML = "";
     photos.forEach((ph, i) => {
-      const done = ph.picks.filter(Boolean).length;
+      const used = STEPS.filter((_, k) => picks[k] && picks[k].photo === i).map((st) => st.label);
       const wrap = document.createElement("div");
       wrap.style.position = "relative";
       const b = document.createElement("button");
       b.type = "button";
       b.className = "thumb" + (i === cur ? " active" : "");
-      b.setAttribute("aria-label", "사진 " + (i + 1) + ", " + done + "곳 찍음");
+      b.setAttribute("aria-label", "사진 " + (i + 1) + (used.length ? ", " + used.join("·") + " 찍음" : ""));
       b.innerHTML = '<img src="' + ph.thumb + '" alt="">' +
-        '<span class="badge' + (done === 3 ? " ok" : "") + '">' + (done === 3 ? "완료" : done + "/3") + "</span>";
+        (used.length ? '<span class="badge ok">' + STEPS.filter((_, k) => picks[k] && picks[k].photo === i).map((st) => st.mark).join("") + "</span>" : "");
       b.addEventListener("click", () => selectPhoto(i));
       wrap.appendChild(b);
       if (photos.length > 1) {
@@ -537,6 +531,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
         del.setAttribute("aria-label", "사진 " + (i + 1) + " 빼기");
         del.addEventListener("click", () => {
           photos.splice(i, 1);
+          // 뺀 사진에서 찍은 칸은 비우고, 뒤 사진 번호는 하나씩 당긴다
+          picks = picks.map((p) => (!p || p.photo === i ? null : p.photo > i ? { ...p, photo: p.photo - 1 } : p));
+          if (picks.some((p) => !p) && picks[active]) active = picks.findIndex((p) => !p);
           selectPhoto(Math.min(cur > i ? cur - 1 : cur, photos.length - 1));
         });
         wrap.appendChild(del);
@@ -557,12 +554,11 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   }
 
   function renderPick() {
-    photos[cur].active = active;
     renderThumbs();
     const box = $("photoBox");
     box.querySelectorAll(".marker").forEach((m) => m.remove());
     picks.forEach((p, i) => {
-      if (!p) return;
+      if (!p || p.photo !== cur) return;
       const m = document.createElement("span");
       m.className = "marker";
       m.style.left = (p.x * 100) + "%";
@@ -581,34 +577,30 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       b.className = "slot" + (i === active ? " active" : "") + (p ? " done" : "");
       b.innerHTML = '<span class="dot"' + (p ? ' style="background:' + toHex(p.rgb) + '"' : "") + "></span>" +
         "<span>" + s.mark + " " + s.label + "</span>" +
-        '<span class="sub">' + (p ? (i === active ? "다시 터치하세요" : "다시 찍기") : (i === active ? "지금 터치" : "아직 안 찍음")) + "</span>";
+        '<span class="sub">' + (p ? (i === active ? "다시 터치하세요" : photos.length > 1 ? "사진 " + (p.photo + 1) + " · 다시 찍기" : "다시 찍기") : (i === active ? "지금 터치" : "아직 안 찍음")) + "</span>";
       b.setAttribute("aria-pressed", i === active ? "true" : "false");
-      b.addEventListener("click", () => { active = i; renderPick(); });
+      // 이미 찍은 칸을 누르면 그 칸을 찍은 사진으로 돌아가서 다시 찍게 한다
+      b.addEventListener("click", () => { active = i; if (p && p.photo !== cur) selectPhoto(p.photo); else renderPick(); });
       slots.appendChild(b);
     });
 
     const s = STEPS[active];
     const doneCount = picks.filter(Boolean).length;
     const allDone = doneCount === 3;
-    const nextPhoto = photos.findIndex((ph) => ph.picks.some((p) => !p));
     const multi = photos.length > 1;
-    $("stepCount").textContent = (multi ? "사진 " + (cur + 1) + " · " : "") + (allDone ? "3 / 3 완료" : (active + 1) + " / 3");
+    $("stepCount").textContent = (multi ? "사진 " + (cur + 1) + " 보는 중 · " : "") + (allDone ? "3 / 3 완료" : (active + 1) + " / 3");
     $("stepNow").textContent = allDone && picks[active]
       ? "세 곳을 모두 찍었어요"
       : s.mark + " " + s.label + "을 터치해 주세요";
     $("stepHint").textContent = allDone && picks[active]
       ? "고치고 싶은 곳은 아래 칸을 누른 뒤 사진을 다시 터치하세요."
-      : s.hint;
+      : s.hint + (multi ? " 이 사진에 안 보이면 위에서 다른 사진을 골라 주세요." : photos.length < MAX_PHOTOS ? " 이 사진에 안 보이면 '사진 추가'로 다른 사진을 올려 주세요." : "");
     const btn = $("judgeBtn");
     btn.disabled = !allDone;
-    btn.textContent = !allDone ? "세 곳을 모두 찍어 주세요 (" + doneCount + "/3)"
-      : nextPhoto !== -1 ? "다음 사진 찍기 (사진 " + (nextPhoto + 1) + ")"
-      : multi ? "사진 " + photos.length + "장으로 우리집 톤 확인하기" : "우리집 톤 확인하기";
+    btn.textContent = allDone ? "우리집 톤 확인하기" : "세 곳을 모두 찍어 주세요 (" + doneCount + "/3)";
   }
 
   $("judgeBtn").addEventListener("click", () => {
-    const nextPhoto = photos.findIndex((ph) => ph.picks.some((p) => !p));
-    if (nextPhoto !== -1) { selectPhoto(nextPhoto); window.scrollTo(0, 0); return; }
     last = judge();
     renderResult(last);
     show("result");
@@ -622,8 +614,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     $("resKnob").style.left = score + "%";
     $("resScore").textContent = "따뜻함 " + score + "점";
 
-    $("pickedTitle").textContent = "우리집에서 찍은 색" + (photos.length > 1 ? " · 사진 " + photos.length + "장 평균" : "");
-    $("resPicked").innerHTML = merged.map((p, i) =>
+    const usedPhotos = new Set(picks.map((p) => p.photo)).size;
+    $("pickedTitle").textContent = "우리집에서 찍은 색" + (usedPhotos > 1 ? " · 사진 " + usedPhotos + "장에서" : "");
+    $("resPicked").innerHTML = picks.map((p, i) =>
       '<div><span class="c" style="background:' + toHex(p.rgb) + '"></span>' +
       "<span>" + STEPS[i].label + "</span><small>" + feel(p.warmth) + " · " + Math.round(STEPS[i].weight * 100) + "%</small></div>"
     ).join("");
@@ -682,10 +675,11 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     g.fillStyle = "#876712"; g.font = "600 34px " + F;
     g.fillText("우리집 톤 찾기", M, 118);
 
-    // 사진 (여러 장이면 가로로 나눠서, 각각 가운데 맞춰 자르기)
+    // 사진 (색을 찍은 사진이 여러 장이면 가로로 나눠서, 각각 가운데 맞춰 자르기)
+    const shown = [...new Set(picks.map((p) => p.photo))].sort().map((i) => photos[i]);
     const px = M, py = 160, pw = CW, ph = 560, pgap = 12;
-    const cw = (pw - pgap * (photos.length - 1)) / photos.length;
-    photos.forEach((p, i) => {
+    const cw = (pw - pgap * (shown.length - 1)) / shown.length;
+    shown.forEach((p, i) => {
       const src = p.canvas, x = px + i * (cw + pgap);
       const s = Math.max(cw / src.width, ph / src.height);
       const sw = cw / s, sh = ph / s;
@@ -694,8 +688,8 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       g.restore();
     });
 
-    // 찍은 색 3개 (사진 여러 장이면 평균색)
-    merged.forEach((p, i) => {
+    // 찍은 색 3개
+    picks.forEach((p, i) => {
       const cx = M + 70 + i * 150, cy = py + ph;
       g.beginPath(); g.arc(cx, cy, 58, 0, Math.PI * 2);
       g.fillStyle = "#FFFCF6"; g.fill();
