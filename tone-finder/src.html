@@ -93,6 +93,19 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   background: var(--ink); color: var(--paper); font: 700 12px/22px var(--font); font-style: normal; text-align: center;
 }
 @keyframes pop { from { transform: scale(.4); } to { transform: scale(1); } }
+.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumb { position: relative; width: 64px; height: 64px; padding: 0; border-radius: 12px; overflow: hidden; cursor: pointer;
+  border: 2px solid var(--line); background: var(--paper); }
+.thumb.active { border-color: var(--butter-deep); box-shadow: 0 0 0 3px rgba(232, 210, 122, .35); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .badge { position: absolute; left: 4px; bottom: 4px; padding: 0 6px; border-radius: 999px; font: 600 11px/18px var(--font);
+  background: rgba(59, 48, 39, .78); color: var(--paper); font-variant-numeric: tabular-nums; }
+.thumb .badge.ok { background: var(--sage-deep); }
+.thumb-del { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0;
+  background: rgba(59, 48, 39, .78); color: var(--paper); font: 700 13px/22px var(--font); cursor: pointer; }
+.thumb-add { width: 64px; height: 64px; border-radius: 12px; border: 1.5px dashed var(--ink-soft); color: var(--ink-soft);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; font: 500 11px/1.3 var(--font); cursor: pointer; text-align: center; }
+.thumb-add b { font-size: 20px; line-height: 1; font-weight: 500; }
 .slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .slot {
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 10px;
@@ -168,13 +181,13 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       <p class="muted">바닥, 문·몰딩, 벽의 색을 읽어서 웜톤 소품이 어울리는 집인지, 쿨톤 소품이 어울리는 집인지 알려드려요.</p>
     </div>
     <ol class="steps">
-      <li><b>1</b><span>거실이나 방 사진을 한 장 올려요</span></li>
+      <li><b>1</b><span>거실이나 방 사진을 1~3장 올려요</span></li>
       <li><b>2</b><span>사진에서 바닥 → 문·몰딩 → 벽 순서로 터치해요</span></li>
       <li><b>3</b><span>어울리는 색과 소재를 확인해요</span></li>
     </ol>
     <div class="actions">
       <label class="btn btn-main" for="fileInput" tabindex="0" id="uploadBtn">사진 올리기</label>
-      <input type="file" id="fileInput" accept="image/*" hidden>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
       <button class="link" type="button" id="sampleBtn">예시 사진으로 먼저 해보기</button>
     </div>
     <p class="privacy">
@@ -190,6 +203,8 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       <p class="now" id="stepNow">① 바닥을 터치해 주세요</p>
       <p class="muted" id="stepHint">바닥재가 잘 보이는 곳을 눌러 주세요.</p>
     </div>
+    <div class="thumbs" id="thumbs" aria-label="올린 사진"></div>
+    <input type="file" id="addInput" accept="image/*" multiple hidden>
     <div class="photo" id="photoBox">
       <canvas id="photoCanvas" aria-label="올린 사진. 터치하면 그 지점의 색을 읽어요."></canvas>
     </div>
@@ -214,7 +229,7 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     </div>
 
     <div class="block">
-      <h3>우리집에서 찍은 색</h3>
+      <h3 id="pickedTitle">우리집에서 찍은 색</h3>
       <div class="picked" id="resPicked"></div>
     </div>
     <div class="block">
@@ -307,8 +322,13 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const embedded = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 
-  let picks = [null, null, null];   // { x, y, rgb, lab, warmth }
+  // 사진은 최대 3장. 사진마다 바닥·문/몰딩·벽을 하나씩 찍는다.
+  const MAX_PHOTOS = 3;
+  let photos = [];                  // { canvas, thumb, picks, active }
+  let cur = 0;
+  let picks = [null, null, null];   // 지금 보고 있는 사진의 picks: { x, y, rgb, lab, warmth }
   let active = 0;
+  let merged = [];                  // 판정에 쓴, 사진 여러 장을 합친 칸별 색
   let last = null;                  // 마지막 판정 결과
 
   function show(name) {
@@ -333,7 +353,13 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
   function judge() {
-    const W = picks.reduce((sum, p, i) => sum + p.warmth * STEPS[i].weight, 0);
+    // 사진마다 가중 따뜻함을 구해 평균. 칸별 색도 사진들의 평균으로 보여준다.
+    const W = photos.reduce((sum, ph) => sum + ph.picks.reduce((w, p, i) => w + p.warmth * STEPS[i].weight, 0), 0) / photos.length;
+    merged = STEPS.map((_, i) => {
+      const list = photos.map((ph) => ph.picks[i]);
+      const rgb = [0, 1, 2].map((k) => Math.round(list.reduce((t, p) => t + p.rgb[k], 0) / list.length));
+      return { rgb, warmth: list.reduce((t, p) => t + p.warmth, 0) / list.length };
+    });
     // W = 6 을 중간(50점)으로 두고 1당 5점. 65점 이상 웜, 35점 이하 쿨.
     const score = Math.round(clamp(50 + (W - 6) * 5, 0, 100));
     const type = score >= 65 ? "warm" : score <= 35 ? "cool" : "neutral";
@@ -350,24 +376,59 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       img.src = src;
     });
   }
-  function setPhoto(img) {
+  function toPhoto(img) {
     const max = 1600;
     const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-    canvas.width = Math.round(img.naturalWidth * s);
-    canvas.height = Math.round(img.naturalHeight * s);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    picks = [null, null, null];
-    active = 0;
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * s);
+    c.height = Math.round(img.naturalHeight * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const t = document.createElement("canvas");
+    const ts = 128 / Math.min(c.width, c.height);
+    t.width = Math.round(c.width * ts); t.height = Math.round(c.height * ts);
+    t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+    return { canvas: c, thumb: t.toDataURL("image/jpeg", 0.7), picks: [null, null, null], active: 0 };
+  }
+  function selectPhoto(i) {
+    cur = i;
+    const ph = photos[i];
+    canvas.width = ph.canvas.width;
+    canvas.height = ph.canvas.height;
+    ctx.drawImage(ph.canvas, 0, 0);
+    picks = ph.picks;
+    active = ph.active;
     renderPick();
+  }
+  function setPhoto(img) {
+    photos = [toPhoto(img)];
+    selectPhoto(0);
     show("pick");
   }
+  // 사진 여러 장을 한 번에 골라도 남은 자리(최대 3장)만큼만 받는다.
+  async function addFiles(files, reset) {
+    const list = Array.from(files || []);
+    if (!list.length) return false;
+    const next = reset ? [] : photos.slice();
+    const before = next.length;
+    for (const file of list.slice(0, MAX_PHOTOS - next.length)) {
+      const url = URL.createObjectURL(file);
+      try { next.push(toPhoto(await loadImage(url))); } catch (err) {} finally { URL.revokeObjectURL(url); }
+    }
+    if (next.length === before) return false;
+    photos = next;
+    selectPhoto(before);
+    show("pick");
+    return true;
+  }
   $("fileInput").addEventListener("change", async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    try { setPhoto(await loadImage(url)); }
-    catch (err) { $("uploadBtn").textContent = "이 사진은 열 수 없어요. 다른 사진을 골라 주세요"; }
-    finally { URL.revokeObjectURL(url); e.target.value = ""; }
+    if (!(await addFiles(e.target.files, true)) && e.target.files.length) {
+      $("uploadBtn").textContent = "이 사진은 열 수 없어요. 다른 사진을 골라 주세요";
+    }
+    e.target.value = "";
+  });
+  $("addInput").addEventListener("change", async (e) => {
+    await addFiles(e.target.files, false);
+    e.target.value = "";
   });
   $("uploadBtn").addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("fileInput").click(); }
@@ -453,7 +514,51 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
   }
 
+  function renderThumbs() {
+    const box = $("thumbs");
+    box.innerHTML = "";
+    photos.forEach((ph, i) => {
+      const done = ph.picks.filter(Boolean).length;
+      const wrap = document.createElement("div");
+      wrap.style.position = "relative";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "thumb" + (i === cur ? " active" : "");
+      b.setAttribute("aria-label", "사진 " + (i + 1) + ", " + done + "곳 찍음");
+      b.innerHTML = '<img src="' + ph.thumb + '" alt="">' +
+        '<span class="badge' + (done === 3 ? " ok" : "") + '">' + (done === 3 ? "완료" : done + "/3") + "</span>";
+      b.addEventListener("click", () => selectPhoto(i));
+      wrap.appendChild(b);
+      if (photos.length > 1) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "thumb-del";
+        del.textContent = "×";
+        del.setAttribute("aria-label", "사진 " + (i + 1) + " 빼기");
+        del.addEventListener("click", () => {
+          photos.splice(i, 1);
+          selectPhoto(Math.min(cur > i ? cur - 1 : cur, photos.length - 1));
+        });
+        wrap.appendChild(del);
+      }
+      box.appendChild(wrap);
+    });
+    if (photos.length < MAX_PHOTOS) {
+      const add = document.createElement("label");
+      add.className = "thumb-add";
+      add.htmlFor = "addInput";
+      add.tabIndex = 0;
+      add.innerHTML = "<b>+</b>사진 추가<br>(" + photos.length + "/" + MAX_PHOTOS + ")";
+      add.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("addInput").click(); }
+      });
+      box.appendChild(add);
+    }
+  }
+
   function renderPick() {
+    photos[cur].active = active;
+    renderThumbs();
     const box = $("photoBox");
     box.querySelectorAll(".marker").forEach((m) => m.remove());
     picks.forEach((p, i) => {
@@ -485,7 +590,9 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     const s = STEPS[active];
     const doneCount = picks.filter(Boolean).length;
     const allDone = doneCount === 3;
-    $("stepCount").textContent = allDone ? "3 / 3 완료" : (active + 1) + " / 3";
+    const nextPhoto = photos.findIndex((ph) => ph.picks.some((p) => !p));
+    const multi = photos.length > 1;
+    $("stepCount").textContent = (multi ? "사진 " + (cur + 1) + " · " : "") + (allDone ? "3 / 3 완료" : (active + 1) + " / 3");
     $("stepNow").textContent = allDone && picks[active]
       ? "세 곳을 모두 찍었어요"
       : s.mark + " " + s.label + "을 터치해 주세요";
@@ -494,10 +601,14 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
       : s.hint;
     const btn = $("judgeBtn");
     btn.disabled = !allDone;
-    btn.textContent = allDone ? "우리집 톤 확인하기" : "세 곳을 모두 찍어 주세요 (" + doneCount + "/3)";
+    btn.textContent = !allDone ? "세 곳을 모두 찍어 주세요 (" + doneCount + "/3)"
+      : nextPhoto !== -1 ? "다음 사진 찍기 (사진 " + (nextPhoto + 1) + ")"
+      : multi ? "사진 " + photos.length + "장으로 우리집 톤 확인하기" : "우리집 톤 확인하기";
   }
 
   $("judgeBtn").addEventListener("click", () => {
+    const nextPhoto = photos.findIndex((ph) => ph.picks.some((p) => !p));
+    if (nextPhoto !== -1) { selectPhoto(nextPhoto); window.scrollTo(0, 0); return; }
     last = judge();
     renderResult(last);
     show("result");
@@ -511,7 +622,8 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     $("resKnob").style.left = score + "%";
     $("resScore").textContent = "따뜻함 " + score + "점";
 
-    $("resPicked").innerHTML = picks.map((p, i) =>
+    $("pickedTitle").textContent = "우리집에서 찍은 색" + (photos.length > 1 ? " · 사진 " + photos.length + "장 평균" : "");
+    $("resPicked").innerHTML = merged.map((p, i) =>
       '<div><span class="c" style="background:' + toHex(p.rgb) + '"></span>' +
       "<span>" + STEPS[i].label + "</span><small>" + feel(p.warmth) + " · " + Math.round(STEPS[i].weight * 100) + "%</small></div>"
     ).join("");
@@ -570,16 +682,20 @@ h3 { font-size: 14px; font-weight: 600; color: var(--sage-deep); letter-spacing:
     g.fillStyle = "#876712"; g.font = "600 34px " + F;
     g.fillText("우리집 톤 찾기", M, 118);
 
-    // 사진 (가운데 맞춰 자르기)
-    const px = M, py = 160, pw = CW, ph = 560;
-    const s = Math.max(pw / canvas.width, ph / canvas.height);
-    const sw = pw / s, sh = ph / s;
-    g.save(); roundRect(g, px, py, pw, ph, 40); g.clip();
-    g.drawImage(canvas, (canvas.width - sw) / 2, (canvas.height - sh) / 2, sw, sh, px, py, pw, ph);
-    g.restore();
+    // 사진 (여러 장이면 가로로 나눠서, 각각 가운데 맞춰 자르기)
+    const px = M, py = 160, pw = CW, ph = 560, pgap = 12;
+    const cw = (pw - pgap * (photos.length - 1)) / photos.length;
+    photos.forEach((p, i) => {
+      const src = p.canvas, x = px + i * (cw + pgap);
+      const s = Math.max(cw / src.width, ph / src.height);
+      const sw = cw / s, sh = ph / s;
+      g.save(); roundRect(g, x, py, cw, ph, 40); g.clip();
+      g.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, x, py, cw, ph);
+      g.restore();
+    });
 
-    // 찍은 색 3개
-    picks.forEach((p, i) => {
+    // 찍은 색 3개 (사진 여러 장이면 평균색)
+    merged.forEach((p, i) => {
       const cx = M + 70 + i * 150, cy = py + ph;
       g.beginPath(); g.arc(cx, cy, 58, 0, Math.PI * 2);
       g.fillStyle = "#FFFCF6"; g.fill();
