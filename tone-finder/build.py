@@ -18,6 +18,7 @@ from PIL import Image, ImageOps
 
 HERE = Path(__file__).parent
 WEIGHTS = {400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold"}
+SITE_URL = "https://fastidious-lily-328df5.netlify.app"  # Netlify 주소를 바꾸면 여기도 바꾸고 다시 빌드
 DESCRIPTION = "집 사진 한 장으로 바닥·몰딩·벽 색을 읽어 웜톤·쿨톤·뉴트럴 소품을 추천해요. 사진은 내 폰 안에서만 처리돼요."
 ICON = (
     "data:image/svg+xml,"
@@ -31,6 +32,11 @@ META = (
     '<meta property="og:type" content="website">\n'
     '<meta property="og:title" content="우리집 톤 찾기 · 호유홈">\n'
     f'<meta property="og:description" content="{DESCRIPTION}">\n'
+    f'<meta property="og:url" content="{SITE_URL}/">\n'
+    f'<meta property="og:image" content="{SITE_URL}/og.png">\n'
+    '<meta property="og:image:width" content="1200">\n'
+    '<meta property="og:image:height" content="630">\n'
+    '<meta name="twitter:card" content="summary_large_image">\n'
     '<meta name="theme-color" content="#F7F2E9">\n'
     f'<link rel="icon" href="{ICON}">\n'
 )
